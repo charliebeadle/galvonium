@@ -35,8 +35,7 @@
         "recommendations": [
             "platformio.platformio-ide",
             "ms-python.python",
-            "ms-vscode.cpptools",
-            "streetsidesoftware.code-spell-checker"
+            "ms-vscode.cpptools"
         ]
     }
 }

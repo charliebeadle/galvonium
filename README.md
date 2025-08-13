@@ -38,21 +38,6 @@ Galvonium is a hybrid control system that coordinates between a PC and Arduino U
 - Test pattern generation
 - Timing calibration tools
 
-## Getting Started
-
-1. **Arduino Setup:**
-   ```bash
-   cd arduino
-   pio run -t upload
-   ```
-
-2. **Python Setup:**
-   ```bash
-   cd python
-   pip install -r requirements.txt
-   python laser_client.py
-   ```
-
 ## Development Status
 
 Currently implementing:
@@ -72,11 +57,3 @@ galvonium/
 ├── docs/             # Documentation and progress reports
 └── tests/            # Test patterns and calibration
 ```
-
-## License
-
-[Your chosen license]
-
-## Author
-
-[Your name/handle]
