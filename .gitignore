@@ -1,0 +1,55 @@
+# PlatformIO / Arduino
+arduino/.pio
+arduino/.vscode/.browse.c_cpp.db*
+arduino/.vscode/c_cpp_properties.json
+arduino/.vscode/launch.json
+arduino/.vscode/ipch
+arduino/.pioenvs
+arduino/.piolibdeps
+arduino/.clang_complete
+arduino/.gcc-flags.json
+
+# Python
+python/__pycache__/
+python/*.py[cod]
+python/*$py.class
+python/*.so
+python/.Python
+python/env/
+python/venv/
+python/.venv
+python/*.egg-info/
+python/.pytest_cache/
+python/.coverage
+python/*.log
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+# Keep the main workspace file
+!galvonium.code-workspace
+
+# OS Files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Project specific
+*.tmp
+*.temp
+debug/
+output/
+.codebuddy/
+
+# Documentation builds
+docs/_build/
+docs/*.pdf
+
+# Test outputs
+tests/output/
+tests/*.log

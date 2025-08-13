@@ -1,0 +1,42 @@
+{
+    "folders": [
+        {
+            "path": ".",
+            "name": "Galvonium Root"
+        },
+        {
+            "path": "arduino",
+            "name": "Arduino - Galvo Control"
+        },
+        {
+            "path": "python",
+            "name": "Python - PC Interface"
+        },
+        {
+            "path": "docs",
+            "name": "Documentation"
+        }
+    ],
+    "settings": {
+        "files.exclude": {
+            "**/.git": false,
+            "**/.pio": true,
+            "**/__pycache__": true,
+            "**/*.pyc": true
+        },
+        "platformio-ide.activateOnlyOnPlatformIOProject": true,
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true,
+        "editor.formatOnSave": true,
+        "editor.rulers": [80, 120],
+        "files.trimTrailingWhitespace": true
+    },
+    "extensions": {
+        "recommendations": [
+            "platformio.platformio-ide",
+            "ms-python.python",
+            "ms-vscode.cpptools",
+            "streetsidesoftware.code-spell-checker"
+        ]
+    }
+}
