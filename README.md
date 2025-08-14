@@ -1,59 +1,88 @@
 # Galvonium
 
-PC-Arduino laser galvanometer projector control system for real-time vector graphics display.
+PC-Arduino interface for laser galvanometer control.
 
 ## Overview
 
-Galvonium is a hybrid control system that coordinates between a PC and Arduino Uno to drive laser galvanometer mirrors via an AT15MINI driver. The system uses a progressive enhancement approach where computational work gradually migrates from PC to Arduino as optimizations are proven.
+Dual-buffer vector graphics system using Arduino Uno and AT15MINI galvo driver. PC handles complex calculations while Arduino manages timing-critical DAC output.
 
-## Features
+## Status
 
-- 10,000 points/second vector display capability
-- Dual-buffer system for smooth animations
-- Real-time parameter adjustment for calibration
-- Text-based command protocol (binary protocol planned)
-- ISR-driven DAC output for precise timing
-- Progressive PC-to-Arduino optimization pipeline
+Working:
 
-## Hardware Requirements
+- Dual-buffer system with atomic swapping
+- Serial command interface
+- Python serial monitor
+- PROGMEM-optimized firmware (~1KB RAM usage)
 
-- Arduino Uno R3 (or compatible)
-- AT15MINI galvo driver with XY galvanometers
-- 12-bit DAC for galvo control
-- Laser module with TTL control
-- USB connection to PC
+Next:
 
-## Software Architecture
-
-### Arduino Component
-- Interrupt-driven DAC output at 10kHz
-- Dual frame buffer management
-- Simple command interpreter
-- PROGMEM-optimized for 2KB RAM limit
-
-### Python Component  
-- Auto-detecting serial communication
-- High-level drawing commands
-- Buffer visualization and editing
+- ISR-driven 10kHz DAC output
+- SPI communication
+- Timing parameters
 - Test pattern generation
-- Timing calibration tools
 
-## Development Status
+## Hardware
 
-Currently implementing:
-- [x] Basic command system with parameter control
-- [x] PC-Arduino communication protocol
-- [ ] Dual buffer system
-- [ ] ISR-based DAC output
-- [ ] Python visualization tools
-- [ ] Test pattern generators
+- Arduino Uno R3
+- AT15MINI galvo driver
+- 12-bit SPI DAC
+- TTL laser module
 
-## Project Structure
+## Commands
+
+```
+WRITE idx x y flags [ACTIVE|INACTIVE]  - Write step to buffer
+CLEAR [ACTIVE|INACTIVE]                - Clear buffer
+SWAP                                   - Swap buffers
+DUMP [ACTIVE|INACTIVE]                 - Display buffer contents
+SIZE n [ACTIVE|INACTIVE]               - Set step count
+HELP                                   - Show commands
+```
+
+Default target: inactive buffer. Active buffer modifications require explicit flag.
+
+## Setup
+
+Arduino:
+
+```bash
+cd arduino
+pio run -t upload
+```
+
+Python:
+
+```bash
+cd python
+pip install -r requirements.txt
+python serial_monitor.py  # Set PORT variable first
+```
+
+## Structure
 
 ```
 galvonium/
-├── arduino/          # Arduino firmware (PlatformIO)
-├── python/           # PC control software
-├── docs/             # Documentation and progress reports
-└── tests/            # Test patterns and calibration
+├── arduino/
+│   ├── src/
+│   │   ├── main.cpp
+│   │   ├── buffer.cpp/h
+│   │   └── serial_cmd.cpp/h
+│   └── platformio.ini
+├── python/
+│   ├── serial_monitor.py
+│   └── requirements.txt
+└── docs/
 ```
+
+## Technical Details
+
+- 256 steps per buffer, 3 bytes per step (x, y, flags)
+- Atomic buffer swapping with interrupt protection
+- Serial: 9600 baud, 32-byte buffer
+- Switch-based command dispatch
+- All strings in PROGMEM
+
+## Repository
+
+github.com/charliebeadle/galvonium
