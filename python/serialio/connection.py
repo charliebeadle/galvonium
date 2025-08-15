@@ -1,63 +1,44 @@
 from __future__ import annotations
 
-import threading
 from typing import Optional, Callable, List
 
 from PyQt5.QtCore import QObject, pyqtSignal, QThread
 
-# NOTE: we intentionally import pyserial here (not our own package).
-# Our package is named 'serialio' to avoid shadowing 'serial'.
-import serial as pyserial
-from serial.tools import list_ports as pyserial_list_ports
-
-
-def list_serial_ports() -> List[str]:
-    """
-    Return a list of available serial port device names (e.g., COM3, COM4).
-    """
-    return [p.device for p in pyserial_list_ports.comports()]
+from .serial_io import ThreadSafeSerialIO, SerialIOError, list_serial_ports
 
 
 class _ReaderWorker(QObject):
     """
-    Runs in its own QThread. Continuously reads lines from the serial port
+    Runs in its own QThread. Continuously reads lines from the serial I/O
     and emits them via a Qt signal.
     """
 
     line_received = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, ser: pyserial.Serial, parent: Optional[QObject] = None):
+    def __init__(self, serial_io: ThreadSafeSerialIO, parent: Optional[QObject] = None):
         super().__init__(parent)
-        self._ser = ser
-        self._running = False
+        self._serial_io = serial_io
 
     def start(self):
-        self._running = True
+        """Main reading loop - runs in the worker thread."""
         try:
-            while self._running:
+            while True:
                 try:
-                    line = self._ser.readline()
-                except Exception as e:
-                    self.error.emit(f"Serial read error: {e!r}")
+                    line = self._serial_io.readline()
+                    if line is None:  # Shutdown requested
+                        break
+                    if line:  # Non-empty line
+                        self.line_received.emit(line)
+                except SerialIOError as e:
+                    self.error.emit(str(e))
                     break
-
-                if not self._running:
-                    break
-
-                if line:
-                    try:
-                        text = line.decode("utf-8", errors="replace").rstrip("\r\n")
-                    except Exception as e:
-                        self.error.emit(f"Decode error: {e!r}")
-                        continue
-                    self.line_received.emit(text)
-        finally:
-            # no cleanup here; port closed by SerialConnection
-            pass
+        except Exception as e:
+            self.error.emit(f"Unexpected error in reader: {e!r}")
 
     def stop(self):
-        self._running = False
+        """Request the reader to stop."""
+        self._serial_io.request_shutdown()
 
 
 class SerialConnection(QObject):
@@ -78,21 +59,23 @@ class SerialConnection(QObject):
         self,
         parent: Optional[QObject] = None,
         *,
-        serial_class: Callable[..., pyserial.Serial] = pyserial.Serial,
+        serial_class=None,  # For backwards compatibility with tests
         read_timeout: float = 0.1,
     ):
         """
         serial_class is injectable for tests (e.g., a FakeSerial).
         """
         super().__init__(parent)
-        self._serial_class = serial_class
-        self._read_timeout = read_timeout
+        
+        # Create the thread-safe serial I/O handler
+        if serial_class is not None:
+            # For tests - pass the serial class to ThreadSafeSerialIO
+            self._serial_io = ThreadSafeSerialIO(serial_class=serial_class, read_timeout=read_timeout)
+        else:
+            self._serial_io = ThreadSafeSerialIO(read_timeout=read_timeout)
 
-        self._ser: Optional[pyserial.Serial] = None
         self._reader_thread: Optional[QThread] = None
         self._reader: Optional[_ReaderWorker] = None
-
-        self._write_lock = threading.Lock()
 
     # ---- Lifecycle ----
     def connect(self, port: str, baud: int = 9600) -> bool:
@@ -103,16 +86,18 @@ class SerialConnection(QObject):
         self.disconnect()  # idempotent
 
         try:
-            self._ser = self._serial_class(port, baud, timeout=self._read_timeout)
-        except Exception as e:
-            self._ser = None
-            self.error_occurred.emit(f"Failed to open {port} @ {baud}: {e}")
+            success = self._serial_io.connect(port, baud)
+            if not success:
+                self.connection_status.emit(False)
+                return False
+        except SerialIOError as e:
+            self.error_occurred.emit(str(e))
             self.connection_status.emit(False)
             return False
 
         # Set up reader worker + thread
         self._reader_thread = QThread()
-        self._reader = _ReaderWorker(self._ser)
+        self._reader = _ReaderWorker(self._serial_io)
         self._reader.moveToThread(self._reader_thread)
 
         # Plumb signals
@@ -129,32 +114,25 @@ class SerialConnection(QObject):
         """
         Stop reader and close the serial port.
         """
-        # Stop reader
+        # Stop reader first
         if self._reader:
-            try:
-                self._reader.stop()
-            except Exception:
-                pass
+            self._reader.stop()
 
-        # Quit thread
+        # Quit thread and wait for it to finish
         if self._reader_thread:
             self._reader_thread.quit()
-            self._reader_thread.wait(1000)
+            self._reader_thread.wait(2000)  # Wait up to 2 seconds
+        
         self._reader_thread = None
         self._reader = None
 
-        # Close port
-        if self._ser:
-            try:
-                self._ser.close()
-            except Exception:
-                pass
-        self._ser = None
+        # Close the serial I/O (this will signal shutdown and close the port)
+        self._serial_io.disconnect()
 
         self.connection_status.emit(False)
 
     def is_connected(self) -> bool:
-        return self._ser is not None
+        return self._serial_io.is_connected()
 
     # ---- Writing ----
     def send_command(self, cmd: str) -> bool:
@@ -163,20 +141,14 @@ class SerialConnection(QObject):
         Returns True on success, False if not connected or on error.
 
         NOTE: Per your protocol, we do not force uppercase here; build commands
-        uppercase via command_builder. We also do not block for responses here
+        uppercase via commands module. We also do not block for responses here
         (GUI can manage flow). A synchronous helper can be added later.
         """
-        if not self._ser:
-            self.error_occurred.emit("Not connected.")
-            return False
-
-        data = (cmd + "\n").encode("utf-8")
         try:
-            with self._write_lock:
-                self._ser.write(data)
+            self._serial_io.write_line(cmd)
             return True
-        except Exception as e:
-            self.error_occurred.emit(f"Write failed: {e}")
+        except SerialIOError as e:
+            self.error_occurred.emit(str(e))
             return False
 
     # ---- Convenience ----

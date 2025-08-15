@@ -1,8 +1,8 @@
 import unittest
-from serialio.command_builder import cmd_write, cmd_dump, cmd_swap, cmd_clear, cmd_size
+from serialio.commands import cmd_write, cmd_dump, cmd_swap, cmd_clear, cmd_size
 
 
-class TestCommandBuilder(unittest.TestCase):
+class TestCommands(unittest.TestCase):
     def test_write(self):
         self.assertEqual(cmd_write(0, 1, 2, 3), "WRITE 0 1 2 3 INACTIVE")
         self.assertEqual(

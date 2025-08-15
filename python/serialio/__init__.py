@@ -1,5 +1,5 @@
 from .connection import SerialConnection, list_serial_ports
-from .command_builder import (
+from .commands import (
     cmd_write,
     cmd_dump,
     cmd_swap,
