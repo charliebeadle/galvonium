@@ -8,6 +8,33 @@ from models.buffer_model import BufferData  # your implemented data model
 
 BIN_QRE = QtCore.QRegularExpression(r"^[01]{1,8}$")
 BIN_FULL_RE = re.compile(r"^[01]{1,8}$")
+DEC_QRE = QtCore.QRegularExpression(r"^[0-9]{1,3}$")
+DEC_FULL_RE = re.compile(r"^[0-9]{1,3}$")
+
+
+class DecimalDelegate(QtWidgets.QStyledItemDelegate):
+    """Editor that accepts only decimal numbers 0-255 for X and Y columns."""
+
+    def createEditor(self, parent, option, index):
+        editor = QtWidgets.QLineEdit(parent)
+        validator = QtGui.QRegularExpressionValidator(DEC_QRE, editor)
+        editor.setValidator(validator)
+        editor.setMaxLength(3)
+        editor.setPlaceholderText("0")
+        editor.setFont(QtGui.QFont("Consolas"))
+        return editor
+
+    def setEditorData(self, editor, index):
+        if not isinstance(editor, QtWidgets.QLineEdit):
+            return super().setEditorData(editor, index)
+        val = index.model().data(index, QtCore.Qt.EditRole)
+        editor.setText(val)
+
+    def setModelData(self, editor, model, index):
+        if not isinstance(editor, QtWidgets.QLineEdit):
+            return super().setModelData(editor, model, index)
+        text = editor.text()
+        model.setData(index, text, role=QtCore.Qt.EditRole)
 
 
 class BinaryDelegate(QtWidgets.QStyledItemDelegate):
@@ -42,7 +69,6 @@ class BufferTableModel(QtCore.QAbstractTableModel):
     def __init__(self, buffer: Optional[BufferData] = None, parent=None):
         super().__init__(parent)
         self._buffer: BufferData = buffer if buffer is not None else BufferData()
-        self._invalid_cells: Set[Tuple[int, int]] = set()
 
     # ── Qt model API ───────────────────────────────────────────────────────
     def rowCount(self, parent=QtCore.QModelIndex()):
@@ -76,20 +102,23 @@ class BufferTableModel(QtCore.QAbstractTableModel):
                 return row  # Index decimal
             step = self._buffer.get_step(row)
             if col == 1:
-                return f"{step.x:08b}"
+                # X column - display and edit in decimal
+                return str(step.x)
             if col == 2:
-                return f"{step.y:08b}"
+                # Y column - display and edit in decimal
+                return str(step.y)
             if col == 3:
-                return f"{step.flags:08b}"
+                # Flags column - display and edit in binary
+                if role == QtCore.Qt.DisplayRole:
+                    return f"{step.flags:08b}"
+                else:
+                    return f"{step.flags:08b}"  # Edit role also binary
 
         if role == QtCore.Qt.TextAlignmentRole:
             if col == 0:
                 return QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter
             return QtCore.Qt.AlignCenter
 
-        if role == QtCore.Qt.BackgroundRole:
-            if (row, col) in self._invalid_cells:
-                return QtGui.QBrush(QtGui.QColor("#ffcccc"))  # light red
         return None
 
     def setData(self, index, value, role=QtCore.Qt.EditRole):
@@ -100,29 +129,36 @@ class BufferTableModel(QtCore.QAbstractTableModel):
             return False
 
         text = str(value).strip()
-        if not BIN_FULL_RE.fullmatch(text):
-            self._invalid_cells.add((row, col))
-            self.dataChanged.emit(index, index, [QtCore.Qt.BackgroundRole])
-            return False
-
-        try:
-            intval = int(text, 2)
-        except ValueError:
-            self._invalid_cells.add((row, col))
-            self.dataChanged.emit(index, index, [QtCore.Qt.BackgroundRole])
-            return False
         step = self._buffer.get_step(row)
-        if col == 1:
-            step.x = intval
-        elif col == 2:
-            step.y = intval
-        elif col == 3:
+
+        if col == 1 or col == 2:  # X or Y columns - decimal validation
+            if not DEC_FULL_RE.fullmatch(text):
+                return False
+
+            try:
+                intval = int(text)
+                if intval < 0 or intval > 255:
+                    return False
+            except ValueError:
+                return False
+
+            if col == 1:
+                step.x = intval
+            else:  # col == 2
+                step.y = intval
+
+        elif col == 3:  # Flags column - binary validation
+            if not BIN_FULL_RE.fullmatch(text):
+                return False
+
+            try:
+                intval = int(text, 2)
+            except ValueError:
+                return False
             step.flags = intval
         else:
             return False
 
-        # Clear error state if any
-        self._invalid_cells.discard((row, col))
         self.dataChanged.emit(index, index)
         return True
 
@@ -130,28 +166,41 @@ class BufferTableModel(QtCore.QAbstractTableModel):
     def load_buffer(self, buffer: BufferData):
         self.beginResetModel()
         self._buffer = buffer
-        self._invalid_cells.clear()
         self.endResetModel()
 
     def clear_all(self):
         self.beginResetModel()
         self._buffer.clear()
-        self._invalid_cells.clear()
         self.endResetModel()
 
     # Optional helper for external validation
     @staticmethod
-    def validate_input(text: str) -> Tuple[bool, Optional[int], Optional[str]]:
-        if not BIN_FULL_RE.fullmatch(text or ""):
-            return False, None, "Binary only (1–8 bits, e.g. 01010101)"
-        return True, int(text, 2), None
+    def validate_input(
+        text: str, column: int
+    ) -> Tuple[bool, Optional[int], Optional[str]]:
+        if column == 1 or column == 2:  # X or Y columns
+            if not DEC_FULL_RE.fullmatch(text or ""):
+                return False, None, "Decimal only (0-255)"
+            try:
+                val = int(text)
+                if val < 0 or val > 255:
+                    return False, None, "Value must be 0-255"
+                return True, val, None
+            except ValueError:
+                return False, None, "Invalid decimal number"
+        elif column == 3:  # Flags column
+            if not BIN_FULL_RE.fullmatch(text or ""):
+                return False, None, "Binary only (1–8 bits, e.g. 01010101)"
+            return True, int(text, 2), None
+        else:
+            return False, None, "Invalid column"
 
 
 class BufferTableView(QtWidgets.QTableView):
-    """QTableView with copy/paste support and binary-only editing.
+    """QTableView with copy/paste support and decimal editing for X/Y, binary for Flags.
 
     Copy OUT: plain decimal numbers (no 0x/0b), tab-separated.
-    Paste IN: binary strings only, reject invalid entries and keep originals.
+    Paste IN: decimal for X/Y, binary for Flags, reject invalid entries and keep originals.
     """
 
     validation_error = QtCore.pyqtSignal(str)
@@ -197,12 +246,9 @@ class BufferTableView(QtWidgets.QTableView):
                 if c == 0:
                     cols.append(str(r))
                 else:
-                    # convert current display binary to decimal on copy
-                    bin_str = model.data(idx, QtCore.Qt.DisplayRole)
-                    try:
-                        cols.append(str(int(bin_str, 2)))
-                    except Exception:
-                        cols.append("")
+                    # Get display value directly
+                    display_val = model.data(idx, QtCore.Qt.DisplayRole)
+                    cols.append(str(display_val))
             rows.append("\t".join(cols))
         QtWidgets.QApplication.clipboard().setText("\n".join(rows))
 
@@ -231,14 +277,16 @@ class BufferTableView(QtWidgets.QTableView):
                 if col > 3:
                     continue
                 idx = model.index(r0 + dr, col)
-                ok, val, err = BufferTableModel.validate_input(token.strip())
+                ok, val, err = BufferTableModel.validate_input(token.strip(), col)
                 if not ok:
                     err_count += 1
                     continue
-                # Set EditRole with original binary text to preserve leading zeros length
+                # Set EditRole with the token text
                 model.setData(idx, token.strip(), role=QtCore.Qt.EditRole)
         if err_count:
-            self.validation_error.emit("Some cells rejected: binary only (1–8 bits).")
+            self.validation_error.emit(
+                "Some cells rejected: check input format (decimal 0-255 for X/Y, binary for Flags)."
+            )
 
 
 class BufferTableWidget(QtWidgets.QWidget):
@@ -256,11 +304,16 @@ class BufferTableWidget(QtWidgets.QWidget):
         self._model = BufferTableModel()
         self._view = BufferTableView(self)
         self._view.setModel(self._model)
-        # Binary delegate for X, Y, Flags
-        delegate = BinaryDelegate(self._view)
-        self._view.setItemDelegateForColumn(1, delegate)
-        self._view.setItemDelegateForColumn(2, delegate)
-        self._view.setItemDelegateForColumn(3, delegate)
+
+        # Hide row numbers to prevent confusion with duplicate index columns
+        self._view.verticalHeader().setVisible(False)
+
+        # Decimal delegate for X, Y columns, Binary delegate for Flags
+        decimal_delegate = DecimalDelegate(self._view)
+        binary_delegate = BinaryDelegate(self._view)
+        self._view.setItemDelegateForColumn(1, decimal_delegate)  # X
+        self._view.setItemDelegateForColumn(2, decimal_delegate)  # Y
+        self._view.setItemDelegateForColumn(3, binary_delegate)  # Flags
 
         # Column sizing
         self._view.setColumnWidth(0, 60)  # Index
@@ -285,4 +338,4 @@ class BufferTableWidget(QtWidgets.QWidget):
         self._model.clear_all()
 
     def validate_input(self, row: int, col: int, value: str):
-        return BufferTableModel.validate_input(value)
+        return BufferTableModel.validate_input(value, col)

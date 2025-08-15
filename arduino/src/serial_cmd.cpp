@@ -2,6 +2,7 @@
 #include <avr/pgmspace.h>
 #include "buffer.h"
 #include "serial_cmd.h"
+#include "timer.h"
 
 #define SERIAL_BUFFER_SIZE 32 // Reduced from 64, saves 32 bytes
 
@@ -222,7 +223,7 @@ static void handle_clear(const char *args)
 
 static void handle_swap(const char *)
 {
-    buffer_swap();
+    requestBufferSwap();
     Serial.println(F("OK"));
 }
 

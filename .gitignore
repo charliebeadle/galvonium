@@ -8,6 +8,7 @@ arduino/.pioenvs
 arduino/.piolibdeps
 arduino/.clang_complete
 arduino/.gcc-flags.json
+arduino/.cache
 
 # Python
 python/__pycache__/
