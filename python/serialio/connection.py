@@ -153,6 +153,15 @@ class SerialConnection(QObject):
             self.error_occurred.emit(str(e))
             return False
 
+    def write(self, data: str) -> bool:
+        """
+        Thread-safe write of data. Appends '\n'.
+        Returns True on success, False if not connected or on error.
+
+        This is an alias for send_command for compatibility with existing code.
+        """
+        return self.send_command(data)
+
     # ---- Convenience ----
     @staticmethod
     def available_ports() -> List[str]:

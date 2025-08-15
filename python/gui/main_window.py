@@ -2,8 +2,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from .buffer_table import BufferTableWidget
 from .terminal_widget import TerminalWidget
 from .control_panel import ControlPanel
+from .connection_manager import ConnectionManager
 
-from models.buffer_model import BufferData  # uses your implemented model
+from controllers.galvo_controller import GalvoController
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -19,6 +20,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("Galvonium Laser GUI")
         self.resize(1100, 800)
 
+        # Initialize controller and connection manager
+        self._controller = GalvoController(self)
+        self._connection_manager = ConnectionManager(self._controller, self)
+
         # Central layout container
         central = QtWidgets.QWidget(self)
         vbox = QtWidgets.QVBoxLayout(central)
@@ -26,7 +31,7 @@ class MainWindow(QtWidgets.QMainWindow):
         vbox.setSpacing(6)
 
         # Top: Control Panel (fixed-ish height)
-        self.control_panel = ControlPanel(self)
+        self.control_panel = ControlPanel(self._connection_manager, self)
         vbox.addWidget(self.control_panel, 0)
 
         # Middle/Bottom with splitter
@@ -34,9 +39,7 @@ class MainWindow(QtWidgets.QMainWindow):
         vbox.addWidget(self.splitter, 1)
 
         # Middle: Buffer Table
-        self.buffer_data = BufferData()  # start empty 256 steps
         self.buffer_table = BufferTableWidget(self)
-        self.buffer_table.load_buffer_data(self.buffer_data)
         self.splitter.addWidget(self.buffer_table)
 
         # Bottom: Terminal
@@ -54,7 +57,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Menus (stubs / TODOs)
         self._build_menu()
 
-        # Wire signals (no serial yet)
+        # Wire signals
         self._wire_signals()
 
         # Restore state
@@ -93,20 +96,78 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # ── Signals ─────────────────────────────────────────────────────────────
     def _wire_signals(self):
+        # Buffer table signals
         self.buffer_table.validation_error.connect(self._on_validation_error)
-        self.control_panel.clear_table_clicked.connect(self.buffer_table.clear_all)
 
-        # Terminal: echo sent command locally (no serial yet)
-        def on_cmd(text: str):
-            if not text.strip():
-                return
-            self.terminal.append_output(text, msg_type="sent")
-            # In future, we will forward to SerialConnection
+        # Control panel signals
+        self.control_panel.clear_table_clicked.connect(self._on_clear_table)
 
-        self.terminal.command_submitted.connect(on_cmd)
+        # Terminal signals
+        self.terminal.command_submitted.connect(self._on_terminal_command)
+
+        # Connection manager signals
+        self._connection_manager.connection_status_changed.connect(
+            self._on_connection_status
+        )
+        self._connection_manager.status_message.connect(self._on_status_message)
+        self._connection_manager.error_occurred.connect(self._on_error_occurred)
+
+        # Controller signals
+        self._controller.buffer_data_changed.connect(self._on_buffer_data_changed)
+        self._controller.operation_progress.connect(self._on_operation_progress)
+        self._controller.data_received.connect(self._on_arduino_data_received)
+
+        # Load initial buffer data
+        self._on_buffer_data_changed(self._controller.get_buffer_data())
 
     def _on_validation_error(self, message: str):
         self._set_status(message, timeout_ms=3000)
+
+    def _on_clear_table(self):
+        """Handle clear table request from control panel."""
+        self._connection_manager.clear_buffer()
+
+    def _on_terminal_command(self, command: str):
+        """Handle command submission from terminal."""
+        if not command.strip():
+            return
+
+        # Echo command locally
+        self.terminal.append_output(command, msg_type="sent")
+
+        # Send command through connection manager
+        if self._connection_manager.is_connected():
+            self._connection_manager.send_command(command)
+        else:
+            self.terminal.append_output("Not connected to device", msg_type="error")
+
+    def _on_connection_status(self, connected: bool):
+        """Handle connection status changes."""
+        if connected:
+            self._set_status("Connected")
+        else:
+            self._set_status("Disconnected")
+
+    def _on_status_message(self, message: str, timeout_ms: int):
+        """Handle status messages from connection manager."""
+        self._set_status(message, timeout_ms)
+
+    def _on_error_occurred(self, error: str):
+        """Handle errors from connection manager."""
+        self._set_status(f"Error: {error}", timeout_ms=5000)
+
+    def _on_buffer_data_changed(self, buffer_data):
+        """Handle buffer data changes from controller."""
+        self.buffer_table.load_buffer_data(buffer_data)
+
+    def _on_operation_progress(self, progress: int, message: str):
+        """Handle operation progress updates."""
+        self.control_panel.update_progress(progress, message)
+
+    def _on_arduino_data_received(self, data: str):
+        """Handle raw data received from Arduino."""
+        # Display in terminal widget
+        self.terminal.append_output(data, msg_type="received")
 
     # ── Status & persistence ────────────────────────────────────────────────
     def _set_status(self, text: str, timeout_ms: int | None = None):
@@ -116,6 +177,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.status.showMessage(text)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        # Clean up resources
+        self._connection_manager.cleanup()
+        self._controller.cleanup()
+
         self._save_ui_state()
         super().closeEvent(event)
 

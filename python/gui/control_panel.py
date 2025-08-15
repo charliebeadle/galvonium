@@ -31,8 +31,9 @@ class StatusLED(QtWidgets.QLabel):
 class ControlPanel(QtWidgets.QGroupBox):
     clear_table_clicked = QtCore.pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, connection_manager, parent=None):
         super().__init__("Control Panel", parent)
+        self._connection_manager = connection_manager
         layout = QtWidgets.QGridLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setHorizontalSpacing(12)
@@ -92,29 +93,101 @@ class ControlPanel(QtWidgets.QGroupBox):
         self.status_lbl = QtWidgets.QLabel("Ready.", self)
         layout.addWidget(self.status_lbl, row, 0, 1, 2)
 
-        # Wire
-        self.refresh_btn.clicked.connect(self.populate_ports)
+        # Wire signals
+        self.refresh_btn.clicked.connect(self.refresh_ports)
+        self.connect_btn.clicked.connect(self._on_connect_clicked)
         self.clear_btn.clicked.connect(self.clear_table_clicked)
+        self.write_btn.clicked.connect(self._on_write_clicked)
+        self.load_btn.clicked.connect(self._on_load_clicked)
+        self.swap_btn.clicked.connect(self._on_swap_clicked)
+
+        # Wire connection manager signals
+        self._connection_manager.ports_updated.connect(self._on_ports_updated)
+        self._connection_manager.connection_status_changed.connect(
+            self._on_connection_status
+        )
 
         # Initial state
-        self.populate_ports()
+        self.refresh_ports()
+
+    def refresh_ports(self):
+        """Refresh the list of available ports."""
+        self._connection_manager.refresh_ports()
 
     def populate_ports(self):
+        """Legacy method - now delegates to refresh_ports."""
+        self.refresh_ports()
+
+    def _on_ports_updated(self, ports):
+        """Handle ports list updates from connection manager."""
         self.port_combo.clear()
-        candidates = []
-        if list_ports is not None:
-            try:
-                ports = list(list_ports.comports())
-                for p in ports:
-                    disp = f"{p.device} — {p.description}"
-                    candidates.append((p.device, disp))
-            except Exception:
-                candidates = []
-        # Fallback sample on Windows
-        if not candidates:
-            candidates = [("COM3", "COM3 — Arduino Uno (example)")]
-        for dev, disp in candidates:
-            self.port_combo.addItem(disp, dev)
+        for port in ports:
+            self.port_combo.addItem(port, port)
+
         # Prefer Uno-like descriptions if present
-        idx = next((i for i, (_, d) in enumerate(candidates) if "uno" in d.lower()), 0)
+        idx = next((i for i, port in enumerate(ports) if "uno" in port.lower()), 0)
         self.port_combo.setCurrentIndex(idx)
+
+    def _on_connection_status(self, connected: bool):
+        """Handle connection status changes."""
+        if connected:
+            self.led.set_on()
+            self.connect_btn.setText("Disconnect")
+            self.connect_btn.clicked.disconnect()
+            self.connect_btn.clicked.connect(self._on_disconnect_clicked)
+            self._update_button_states(True)
+        else:
+            self.led.set_off()
+            self.connect_btn.setText("Connect")
+            self.connect_btn.clicked.disconnect()
+            self.connect_btn.clicked.connect(self._on_connect_clicked)
+            self._update_button_states(False)
+
+    def _on_connect_clicked(self):
+        """Handle connect button click."""
+        port = self.port_combo.currentText()
+        baud = int(self.baud_combo.currentText())
+
+        if self._connection_manager.connect_to_device(port, baud):
+            self.led.set_busy()
+
+    def _on_disconnect_clicked(self):
+        """Handle disconnect button click."""
+        self._connection_manager.disconnect_from_device()
+
+    def _on_write_clicked(self):
+        """Handle write button click."""
+        if not self._connection_manager.is_connected():
+            return
+
+        # For now, write to INACTIVE buffer
+        self._connection_manager.write_buffer_to_device("INACTIVE")
+
+    def _on_load_clicked(self):
+        """Handle load button click."""
+        if not self._connection_manager.is_connected():
+            return
+
+        # For now, load from INACTIVE buffer
+        self._connection_manager.load_buffer_from_device("INACTIVE")
+
+    def _on_swap_clicked(self):
+        """Handle swap button click."""
+        if not self._connection_manager.is_connected():
+            return
+
+        self._connection_manager.swap_buffers()
+
+    def _update_button_states(self, connected: bool):
+        """Update button states based on connection status."""
+        self.write_btn.setEnabled(connected)
+        self.load_btn.setEnabled(connected)
+        self.swap_btn.setEnabled(connected)
+        self.port_combo.setEnabled(not connected)
+        self.baud_combo.setEnabled(not connected)
+        self.refresh_btn.setEnabled(not connected)
+
+    def update_progress(self, progress: int, message: str):
+        """Update progress bar and status."""
+        self.progress.setValue(progress)
+        self.status_lbl.setText(message)

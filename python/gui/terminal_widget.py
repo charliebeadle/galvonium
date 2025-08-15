@@ -114,3 +114,7 @@ class TerminalWidget(QtWidgets.QWidget):
 
     def clear_terminal(self):
         self.output.clear()
+
+    def append_received_data(self, data: str):
+        """Append data received from serial connection."""
+        self.append_output(data.strip(), msg_type="recv")

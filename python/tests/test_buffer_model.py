@@ -222,30 +222,31 @@ class TestBufferData(unittest.TestCase):
 3: 134,70 0
 EOC"""
 
-        self.buffer.from_dump_response(dump_response)
+        # Use class method to create new instance
+        buffer = BufferData.from_dump_response(dump_response)
 
         # Check parsed values
-        step = self.buffer.get_step(0)
+        step = buffer.get_step(0)
         self.assertEqual(step.x, 128)
         self.assertEqual(step.y, 64)
         self.assertEqual(step.flags, 255)
 
-        step = self.buffer.get_step(1)
+        step = buffer.get_step(1)
         self.assertEqual(step.x, 130)
         self.assertEqual(step.y, 66)
         self.assertEqual(step.flags, 240)
 
-        step = self.buffer.get_step(3)
+        step = buffer.get_step(3)
         self.assertEqual(step.x, 134)
         self.assertEqual(step.y, 70)
         self.assertEqual(step.flags, 0)
 
         # Check step 4 is still empty
-        step = self.buffer.get_step(4)
+        step = buffer.get_step(4)
         self.assertTrue(step.is_empty())
 
         # Check last used index
-        self.assertEqual(self.buffer.get_last_used_index(), 3)
+        self.assertEqual(buffer.get_last_used_index(), 3)
 
     def test_from_dump_response_with_gaps(self):
         """Test parsing DUMP response with gaps in indices."""
@@ -254,17 +255,18 @@ EOC"""
 100: 200,200 128
 EOC"""
 
-        self.buffer.from_dump_response(dump_response)
+        # Use class method to create new instance
+        buffer = BufferData.from_dump_response(dump_response)
 
-        self.assertEqual(self.buffer.get_step(0).x, 100)
-        self.assertEqual(self.buffer.get_step(10).x, 150)
-        self.assertEqual(self.buffer.get_step(100).x, 200)
+        self.assertEqual(buffer.get_step(0).x, 100)
+        self.assertEqual(buffer.get_step(10).x, 150)
+        self.assertEqual(buffer.get_step(100).x, 200)
 
         # Check gaps are empty
-        self.assertTrue(self.buffer.get_step(5).is_empty())
-        self.assertTrue(self.buffer.get_step(50).is_empty())
+        self.assertTrue(buffer.get_step(5).is_empty())
+        self.assertTrue(buffer.get_step(50).is_empty())
 
-        self.assertEqual(self.buffer.get_last_used_index(), 100)
+        self.assertEqual(buffer.get_last_used_index(), 100)
 
     def test_to_write_commands(self):
         """Test generating WRITE commands."""
@@ -371,11 +373,9 @@ class TestEdgeCases(unittest.TestCase):
 
     def test_malformed_dump_response(self):
         """Test handling of malformed DUMP responses."""
-        buffer = BufferData()
-
         # Missing EOC - should still parse what it can
         dump = "0: 100,100 255\n1: 150,150 255"
-        buffer.from_dump_response(dump)
+        buffer = BufferData.from_dump_response(dump)
         self.assertEqual(buffer.get_step(0).x, 100)
         self.assertEqual(buffer.get_step(1).x, 150)
 
@@ -384,7 +384,7 @@ class TestEdgeCases(unittest.TestCase):
 garbage line
 1: 150,150 255
 EOC"""
-        buffer.from_dump_response(dump)
+        buffer = BufferData.from_dump_response(dump)
         self.assertEqual(buffer.get_step(0).x, 100)
         self.assertEqual(buffer.get_step(1).x, 150)
 
