@@ -264,14 +264,13 @@ static void handle_dump(const char *args)
     for (int i = 0; i < steps; ++i)
     {
 
-        Serial.print(F("Step "));
         Serial.print(i);
-        Serial.print(F(": X="));
+        Serial.print(F(": "));
         Serial.print(source_buffer[i].x);
-        Serial.print(F(" Y="));
+        Serial.print(F(","));
         Serial.print(source_buffer[i].y);
-        Serial.print(F(" Flags=0x"));
-        Serial.println(source_buffer[i].flags, HEX);
+        Serial.print(F(" "));
+        Serial.println(source_buffer[i].flags);
     }
 
     Serial.println(F("DUMP END"));

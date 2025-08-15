@@ -66,11 +66,13 @@ class SerialConnection(QObject):
         serial_class is injectable for tests (e.g., a FakeSerial).
         """
         super().__init__(parent)
-        
+
         # Create the thread-safe serial I/O handler
         if serial_class is not None:
             # For tests - pass the serial class to ThreadSafeSerialIO
-            self._serial_io = ThreadSafeSerialIO(serial_class=serial_class, read_timeout=read_timeout)
+            self._serial_io = ThreadSafeSerialIO(
+                serial_class=serial_class, read_timeout=read_timeout
+            )
         else:
             self._serial_io = ThreadSafeSerialIO(read_timeout=read_timeout)
 
@@ -122,7 +124,7 @@ class SerialConnection(QObject):
         if self._reader_thread:
             self._reader_thread.quit()
             self._reader_thread.wait(2000)  # Wait up to 2 seconds
-        
+
         self._reader_thread = None
         self._reader = None
 
