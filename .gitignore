@@ -55,3 +55,10 @@ docs/*.pdf
 # Test outputs
 tests/output/
 tests/*.log
+docs/dependencies.md
+docs/milestones.md
+python/classes_Galvonium.png
+python/classes.dot
+python/packages_Galvonium.png
+arduino/src/migration_instructions.md
+arduino/src/new_architecture.md

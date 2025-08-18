@@ -1,17 +1,15 @@
 
-#include "buffer.h"
-#include "serial_cmd.h"
+#include "../communication/serial_cmd.h"
+#include "../galvo/dac_output.h"
+#include "../modes/buffer.h"
 #include <Arduino.h>
-#include <SPI.h>
+
 
 // Timer configuration
 #define PPS 1000 // Points per second - adjust as needed
 #define TIMER_PRESCALER 8
 #define CLOCK_FREQ 16000000
 
-// DAC configuration
-#define DAC_FLAGS_A 0b00010000
-#define DAC_FLAGS_B 0b10010000
 #define LASER_PIN 3 // Pin for laser control
 
 // State variables
@@ -39,11 +37,8 @@ void initTimer() {
   // Enable Timer1 compare interrupt
   TIMSK1 |= (1 << OCIE1A);
 
-  // Initialize SPI and DAC control
-  DDRB |= (1 << PB2);   // Set CS pin as output
-  PORTB &= ~(1 << PB2); // Set CS low initially
-  SPI.begin();
-  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE0));
+  // Initialize DAC output
+  dac_output_init();
 
   // Initialize laser pin
   pinMode(LASER_PIN, OUTPUT);
@@ -53,20 +48,6 @@ void initTimer() {
   readyForFrame = true;
   swapRequested = false;
   currentStep = 0;
-}
-
-// Function to output DAC values for X and Y coordinates
-void outputDAC(uint8_t x, uint8_t y) {
-  uint16_t packetX = DAC_FLAGS_A << 8 | x << 4;
-  uint16_t packetY = DAC_FLAGS_B << 8 | y << 4;
-
-  PORTB &= ~(1 << PB2); // Set CS low
-  SPI.transfer16(packetX);
-  PORTB |= (1 << PB2); // Set CS high
-
-  PORTB &= ~(1 << PB2); // Set CS low
-  SPI.transfer16(packetY);
-  PORTB |= (1 << PB2); // Set CS high
 }
 
 // Function to request buffer swap (called from serial command handler)

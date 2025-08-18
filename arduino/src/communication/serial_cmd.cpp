@@ -1,0 +1,283 @@
+#include "serial_cmd.h"
+#include "../core/timer.h"
+#include "../modes/buffer.h"
+#include <Arduino.h>
+#include <avr/pgmspace.h>
+
+
+#define SERIAL_BUFFER_SIZE 32 // Reduced from 64, saves 32 bytes
+
+static char serial_buf[SERIAL_BUFFER_SIZE];
+static int serial_buf_pos = 0;
+
+enum CommandType {
+  CMD_WRITE,
+  CMD_CLEAR,
+  CMD_SWAP,
+  CMD_DUMP,
+  CMD_SIZE,
+  CMD_HELP,
+  CMD_UNKNOWN
+};
+
+// Command names and help - only command names need to be in PROGMEM for parsing
+const char cmd_write[] PROGMEM = "WRITE";
+const char cmd_clear[] PROGMEM = "CLEAR";
+const char cmd_swap[] PROGMEM = "SWAP";
+const char cmd_dump[] PROGMEM = "DUMP";
+const char cmd_size[] PROGMEM = "SIZE";
+const char cmd_help[] PROGMEM = "HELP";
+
+// --- Command table stored in PROGMEM ---
+struct CommandEntry {
+  const char *name;
+  CommandType type;
+};
+
+static const CommandEntry command_table[] PROGMEM = {
+    {cmd_write, CMD_WRITE}, {cmd_clear, CMD_CLEAR}, {cmd_swap, CMD_SWAP},
+    {cmd_dump, CMD_DUMP},   {cmd_size, CMD_SIZE},   {cmd_help, CMD_HELP}};
+static const int NUM_COMMANDS =
+    sizeof(command_table) / sizeof(command_table[0]);
+
+// --- Forward declarations of handler functions ---
+static void handle_write(const char *args);
+static void handle_clear(const char *args);
+static void handle_swap(const char *args);
+static void handle_dump(const char *args);
+static void handle_size(const char *args);
+static void handle_help(const char *args);
+
+// --- Serial interface setup ---
+void serial_cmd_init() {
+  Serial.begin(9600);
+  Serial.println(F("Galvonium buffer test ready."));
+}
+
+// --- Poll for new serial commands ---
+void serial_cmd_poll() {
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\n' || c == '\r') {
+      if (serial_buf_pos > 0) {
+        serial_buf[serial_buf_pos] = 0; // Null-terminate
+        process_serial_command(serial_buf);
+        serial_buf_pos = 0;
+      }
+    } else if (serial_buf_pos < SERIAL_BUFFER_SIZE - 1) {
+      serial_buf[serial_buf_pos++] = c;
+    }
+  }
+}
+
+// --- Command parsing ---
+CommandType parse_command(const char *cmd, const char **arg_start) {
+  while (*cmd == ' ')
+    cmd++; // Skip leading spaces
+
+  for (int i = 0; i < NUM_COMMANDS; ++i) {
+    // Read command name from PROGMEM
+    const char *prog_name = (const char *)pgm_read_word(&command_table[i].name);
+    size_t n = strlen_P(prog_name);
+
+    if (strncasecmp_P(cmd, prog_name, n) == 0 &&
+        (cmd[n] == '\0' || cmd[n] == ' ')) {
+      if (arg_start)
+        *arg_start = cmd + n;
+      return (CommandType)pgm_read_byte(&command_table[i].type);
+    }
+  }
+  if (arg_start)
+    *arg_start = cmd;
+  return CMD_UNKNOWN;
+}
+
+// --- Command dispatch using switch instead of function pointers ---
+void process_serial_command(const char *cmd) {
+  const char *args = nullptr;
+  CommandType type = parse_command(cmd, &args);
+
+  switch (type) {
+  case CMD_WRITE:
+    handle_write(args);
+    break;
+  case CMD_CLEAR:
+    handle_clear(args);
+    break;
+  case CMD_SWAP:
+    handle_swap(args);
+    break;
+  case CMD_DUMP:
+    handle_dump(args);
+    break;
+  case CMD_SIZE:
+    handle_size(args);
+    break;
+  case CMD_HELP:
+    handle_help(args);
+    break;
+  default:
+    Serial.println(F("ERR: Unknown command"));
+    break;
+  }
+}
+
+// --- Command Handlers ---
+static void handle_write(const char *args) {
+  int idx, x, y, flags;
+  char modifier[16] = "";
+
+  // Parse required parameters first, then optional modifier
+  int parsed = sscanf(args, "%d %d %d %d %s", &idx, &x, &y, &flags, modifier);
+
+  if (parsed < 4) {
+    Serial.println(F("ERR: Usage WRITE idx x y flags [ACTIVE|INACTIVE]"));
+    return;
+  }
+
+  bool use_active = false;
+  if (parsed == 5) {
+    if (strcasecmp(modifier, "ACTIVE") == 0) {
+      use_active = true;
+    } else if (strcasecmp(modifier, "INACTIVE") == 0) {
+      use_active = false;
+    } else {
+      Serial.println(F("ERR: Buffer modifier must be ACTIVE or INACTIVE"));
+      return;
+    }
+  }
+
+  // Select target buffer
+  volatile Step *target_buffer = use_active ? buffer_active : buffer_inactive;
+
+  if (buffer_write(target_buffer, idx, x, y, flags) == 0) {
+    Serial.println(use_active ? F("OK (active buffer modified!)") : F("OK"));
+  } else {
+    Serial.println(F("ERR: Index out of range"));
+  }
+}
+
+static void handle_clear(const char *args) {
+  char modifier[16] = "";
+  int parsed = sscanf(args, "%s", modifier);
+
+  bool use_active = false;
+  if (parsed == 1) {
+    if (strcasecmp(modifier, "ACTIVE") == 0) {
+      use_active = true;
+    } else if (strcasecmp(modifier, "INACTIVE") == 0) {
+      use_active = false;
+    } else {
+      Serial.println(F("ERR: Buffer modifier must be ACTIVE or INACTIVE"));
+      return;
+    }
+  }
+
+  if (use_active) {
+    buffer_clear(buffer_active);
+    buffer_active_steps = 0;
+    Serial.println(F("OK (active buffer cleared!)"));
+  } else {
+    buffer_clear(buffer_inactive);
+    buffer_inactive_steps = 0;
+    Serial.println(F("OK"));
+  }
+}
+
+static void handle_swap(const char *) {
+  requestBufferSwap();
+  Serial.println(F("OK"));
+}
+
+static void handle_dump(const char *args) {
+  char modifier[16] = "";
+  int parsed = sscanf(args, "%s", modifier);
+
+  bool use_active = false;
+  if (parsed == 1) {
+    if (strcasecmp(modifier, "ACTIVE") == 0) {
+      use_active = true;
+    } else if (strcasecmp(modifier, "INACTIVE") == 0) {
+      use_active = false;
+    } else {
+      Serial.println(F("ERR: Buffer modifier must be ACTIVE or INACTIVE"));
+      Serial.println(F("EOC"));
+      return;
+    }
+  }
+
+  // Select source buffer and step count
+  volatile Step *source_buffer = use_active ? buffer_active : buffer_inactive;
+  int steps = use_active ? buffer_active_steps : buffer_inactive_steps;
+  const char *buffer_name = use_active ? "ACTIVE" : "INACTIVE";
+
+  Serial.print(F("DUMP START ("));
+  Serial.print(buffer_name);
+  Serial.println(F(")"));
+  Serial.print(F("Buffer Steps: "));
+  Serial.println(steps);
+
+  for (int i = 0; i < steps; ++i) {
+
+    Serial.print(i);
+    Serial.print(F(": "));
+    Serial.print(source_buffer[i].x);
+    Serial.print(F(","));
+    Serial.print(source_buffer[i].y);
+    Serial.print(F(" "));
+    Serial.println(source_buffer[i].flags);
+  }
+
+  Serial.println(F("DUMP END"));
+  Serial.println(F("EOC"));
+}
+
+static void handle_size(const char *args) {
+  int n;
+  char modifier[16] = "";
+
+  int parsed = sscanf(args, "%d %s", &n, modifier);
+
+  if (parsed < 1 || n < 0 || n > MAX_STEPS) {
+    Serial.println(F("ERR: Usage SIZE n [ACTIVE|INACTIVE]"));
+    return;
+  }
+
+  bool use_active = false;
+  if (parsed == 2) {
+    if (strcasecmp(modifier, "ACTIVE") == 0) {
+      use_active = true;
+    } else if (strcasecmp(modifier, "INACTIVE") == 0) {
+      use_active = false;
+    } else {
+      Serial.println(F("ERR: Buffer modifier must be ACTIVE or INACTIVE"));
+      return;
+    }
+  }
+
+  if (use_active) {
+    buffer_active_steps = n;
+    Serial.println(F("OK (active buffer size changed!)"));
+  } else {
+    buffer_inactive_steps = n;
+    Serial.println(F("OK"));
+  }
+}
+
+static void handle_help(const char *) {
+  // Print help text directly from PROGMEM using Serial.println(F())
+  Serial.println(F("Galvonium Serial Commands:"));
+  Serial.println(F("  WRITE idx x y flags [ACTIVE|INACTIVE] - Write step "
+                   "(default: inactive)"));
+  Serial.println(F("  CLEAR [ACTIVE|INACTIVE]               - Clear buffer "
+                   "(default: inactive)"));
+  Serial.println(F("  SWAP                                  - Atomically swap "
+                   "active/inactive buffers"));
+  Serial.println(F("  DUMP [ACTIVE|INACTIVE]                - Dump buffer "
+                   "(default: inactive)"));
+  Serial.println(F("  SIZE n [ACTIVE|INACTIVE]              - Set buffer size "
+                   "(default: inactive)"));
+  Serial.println(
+      F("  HELP                                  - Show this help message"));
+  Serial.println(F("EOC"));
+}
