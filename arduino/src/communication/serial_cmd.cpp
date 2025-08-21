@@ -1,9 +1,11 @@
 #include "serial_cmd.h"
+#include "../config/config.h"
 #include "../core/timer.h"
 #include "../modes/buffer.h"
 #include <Arduino.h>
+#include <EEPROM.h>
 #include <avr/pgmspace.h>
-
+#include <string.h>
 
 #define SERIAL_BUFFER_SIZE 32 // Reduced from 64, saves 32 bytes
 
@@ -17,6 +19,8 @@ enum CommandType {
   CMD_DUMP,
   CMD_SIZE,
   CMD_HELP,
+  CMD_CONFIG,
+  CMD_EEPROM,
   CMD_UNKNOWN
 };
 
@@ -27,6 +31,8 @@ const char cmd_swap[] PROGMEM = "SWAP";
 const char cmd_dump[] PROGMEM = "DUMP";
 const char cmd_size[] PROGMEM = "SIZE";
 const char cmd_help[] PROGMEM = "HELP";
+const char cmd_config[] PROGMEM = "CONFIG";
+const char cmd_eeprom[] PROGMEM = "EEPROM";
 
 // --- Command table stored in PROGMEM ---
 struct CommandEntry {
@@ -35,8 +41,9 @@ struct CommandEntry {
 };
 
 static const CommandEntry command_table[] PROGMEM = {
-    {cmd_write, CMD_WRITE}, {cmd_clear, CMD_CLEAR}, {cmd_swap, CMD_SWAP},
-    {cmd_dump, CMD_DUMP},   {cmd_size, CMD_SIZE},   {cmd_help, CMD_HELP}};
+    {cmd_write, CMD_WRITE},   {cmd_clear, CMD_CLEAR},  {cmd_swap, CMD_SWAP},
+    {cmd_dump, CMD_DUMP},     {cmd_size, CMD_SIZE},    {cmd_help, CMD_HELP},
+    {cmd_config, CMD_CONFIG}, {cmd_eeprom, CMD_EEPROM}};
 static const int NUM_COMMANDS =
     sizeof(command_table) / sizeof(command_table[0]);
 
@@ -47,6 +54,8 @@ static void handle_swap(const char *args);
 static void handle_dump(const char *args);
 static void handle_size(const char *args);
 static void handle_help(const char *args);
+static void handle_config(const char *args);
+static void handle_eeprom(const char *args);
 
 // --- Serial interface setup ---
 void serial_cmd_init() {
@@ -80,7 +89,7 @@ CommandType parse_command(const char *cmd, const char **arg_start) {
     const char *prog_name = (const char *)pgm_read_word(&command_table[i].name);
     size_t n = strlen_P(prog_name);
 
-    if (strncasecmp_P(cmd, prog_name, n) == 0 &&
+    if (strncmp_P(cmd, prog_name, n) == 0 &&
         (cmd[n] == '\0' || cmd[n] == ' ')) {
       if (arg_start)
         *arg_start = cmd + n;
@@ -116,6 +125,12 @@ void process_serial_command(const char *cmd) {
   case CMD_HELP:
     handle_help(args);
     break;
+  case CMD_CONFIG:
+    handle_config(args);
+    break;
+  case CMD_EEPROM:
+    handle_eeprom(args);
+    break;
   default:
     Serial.println(F("ERR: Unknown command"));
     break;
@@ -137,9 +152,9 @@ static void handle_write(const char *args) {
 
   bool use_active = false;
   if (parsed == 5) {
-    if (strcasecmp(modifier, "ACTIVE") == 0) {
+    if (strcmp(modifier, "ACTIVE") == 0) {
       use_active = true;
-    } else if (strcasecmp(modifier, "INACTIVE") == 0) {
+    } else if (strcmp(modifier, "INACTIVE") == 0) {
       use_active = false;
     } else {
       Serial.println(F("ERR: Buffer modifier must be ACTIVE or INACTIVE"));
@@ -163,9 +178,9 @@ static void handle_clear(const char *args) {
 
   bool use_active = false;
   if (parsed == 1) {
-    if (strcasecmp(modifier, "ACTIVE") == 0) {
+    if (strcmp(modifier, "ACTIVE") == 0) {
       use_active = true;
-    } else if (strcasecmp(modifier, "INACTIVE") == 0) {
+    } else if (strcmp(modifier, "INACTIVE") == 0) {
       use_active = false;
     } else {
       Serial.println(F("ERR: Buffer modifier must be ACTIVE or INACTIVE"));
@@ -195,9 +210,9 @@ static void handle_dump(const char *args) {
 
   bool use_active = false;
   if (parsed == 1) {
-    if (strcasecmp(modifier, "ACTIVE") == 0) {
+    if (strcmp(modifier, "ACTIVE") == 0) {
       use_active = true;
-    } else if (strcasecmp(modifier, "INACTIVE") == 0) {
+    } else if (strcmp(modifier, "INACTIVE") == 0) {
       use_active = false;
     } else {
       Serial.println(F("ERR: Buffer modifier must be ACTIVE or INACTIVE"));
@@ -245,9 +260,9 @@ static void handle_size(const char *args) {
 
   bool use_active = false;
   if (parsed == 2) {
-    if (strcasecmp(modifier, "ACTIVE") == 0) {
+    if (strcmp(modifier, "ACTIVE") == 0) {
       use_active = true;
-    } else if (strcasecmp(modifier, "INACTIVE") == 0) {
+    } else if (strcmp(modifier, "INACTIVE") == 0) {
       use_active = false;
     } else {
       Serial.println(F("ERR: Buffer modifier must be ACTIVE or INACTIVE"));
@@ -277,7 +292,140 @@ static void handle_help(const char *) {
                    "(default: inactive)"));
   Serial.println(F("  SIZE n [ACTIVE|INACTIVE]              - Set buffer size "
                    "(default: inactive)"));
+  Serial.println(F("  CONFIG [GET|SET|RESET] [PARAM] [VALUE] - Get/set "
+                   "configuration parameters"));
+  Serial.println(F("  EEPROM [READ|WRITE|DUMP] - EEPROM operations"));
   Serial.println(
       F("  HELP                                  - Show this help message"));
   Serial.println(F("EOC"));
+}
+
+static void handle_config(const char *args) {
+  char subcmd[16] = "";
+  char param[16] = "";
+  int value = 0;
+
+  // Parse command: CONFIG [GET|SET] [PARAM] [VALUE]
+  int parsed = sscanf(args, "%s %s %d", subcmd, param, &value);
+
+  if (parsed < 1) {
+    // Just "CONFIG" - show all parameters
+    Serial.println(F("Current Configuration (RAM):"));
+    Serial.print(F("  Mode: "));
+    Serial.println(config_get(PARAM_MODE));
+    Serial.print(F("  PPS: "));
+    Serial.println(config_get(PARAM_PPS));
+    Serial.print(F("  EEPROM Size: "));
+    Serial.println(EEPROM.length());
+    Serial.print(F("  Config Size: "));
+    Serial.println(sizeof(GalvoConfig));
+    Serial.println(F("EOC"));
+    return;
+  }
+
+  if (strcmp(subcmd, "GET") == 0) {
+    if (parsed < 2) {
+      Serial.println(F("ERR: Usage CONFIG GET <PARAM>"));
+      return;
+    }
+
+    if (strcmp(param, "MODE") == 0) {
+      Serial.print(F("MODE: "));
+      Serial.println(config_get(PARAM_MODE));
+    } else if (strcmp(param, "PPS") == 0) {
+      Serial.print(F("PPS: "));
+      Serial.println(config_get(PARAM_PPS));
+    } else {
+      Serial.println(F("ERR: Unknown parameter"));
+    }
+
+  } else if (strcmp(subcmd, "SET") == 0) {
+    if (parsed < 3) {
+      Serial.println(F("ERR: Usage CONFIG SET <PARAM> <VALUE>"));
+      return;
+    }
+
+    bool success = false;
+    if (strcmp(param, "MODE") == 0) {
+      success = config_set(PARAM_MODE, value);
+    } else if (strcmp(param, "PPS") == 0) {
+      success = config_set(PARAM_PPS, value);
+    } else {
+      Serial.println(F("ERR: Unknown parameter"));
+      return;
+    }
+
+    if (success) {
+      Serial.println(
+          F("OK - Parameter updated in RAM (use EEPROM WRITE to save)"));
+    } else {
+      Serial.println(F("ERR: Invalid value"));
+    }
+
+  } else if (strcmp(subcmd, "RESET") == 0) {
+    // Reset configuration to defaults (RAM only)
+    Serial.println(F("Resetting configuration to defaults..."));
+    config_load_defaults();
+    Serial.println(
+        F("OK - Configuration reset to defaults (use EEPROM WRITE to save)"));
+
+  } else {
+    Serial.println(F("ERR: Usage CONFIG [GET|SET|RESET] [PARAM] [VALUE]"));
+  }
+}
+
+static void handle_eeprom(const char *args) {
+  char subcmd[16] = "";
+
+  // Parse command: EEPROM [READ|WRITE|DUMP]
+  int parsed = sscanf(args, "%s", subcmd);
+
+  if (parsed < 1) {
+    Serial.println(F("ERR: Usage EEPROM [READ|WRITE|DUMP]"));
+    return;
+  }
+
+  if (strcmp(subcmd, "READ") == 0) {
+    // Read configuration from EEPROM into RAM
+    Serial.println(F("Reading configuration from EEPROM..."));
+    if (config_load_from_eeprom()) {
+      Serial.println(F("OK - Configuration loaded from EEPROM"));
+    } else {
+      Serial.println(F("ERR: Failed to read from EEPROM"));
+    }
+
+  } else if (strcmp(subcmd, "WRITE") == 0) {
+    // Write current RAM configuration to EEPROM
+    Serial.println(F("Writing configuration to EEPROM..."));
+    if (config_save_to_eeprom()) {
+      Serial.println(F("OK - Configuration saved to EEPROM"));
+    } else {
+      Serial.println(F("ERR: Failed to write to EEPROM"));
+    }
+
+  } else if (strcmp(subcmd, "DUMP") == 0) {
+    // Show raw EEPROM contents for debugging
+    Serial.println(F("EEPROM Debug Info:"));
+    Serial.print(F("  EEPROM Size: "));
+    Serial.println(EEPROM.length());
+    Serial.print(F("  Config Size: "));
+    Serial.println(sizeof(GalvoConfig));
+    Serial.print(F("  Start Address: "));
+    Serial.println(CONFIG_EEPROM_START);
+
+    Serial.println(F("Raw EEPROM Contents:"));
+    for (size_t i = 0; i < sizeof(GalvoConfig); i++) {
+      uint8_t byte_val = EEPROM.read(CONFIG_EEPROM_START + i);
+      Serial.print(F("  ["));
+      Serial.print(i);
+      Serial.print(F("]: 0x"));
+      if (byte_val < 0x10)
+        Serial.print(F("0"));
+      Serial.println(byte_val, HEX);
+    }
+    Serial.println(F("EOC"));
+
+  } else {
+    Serial.println(F("ERR: Usage EEPROM [READ|WRITE|DUMP]"));
+  }
 }
