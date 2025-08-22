@@ -57,6 +57,17 @@ static void handle_help(const char *args);
 static void handle_config(const char *args);
 static void handle_eeprom(const char *args);
 
+// --- Helper function to find parameter by name ---
+static ConfigParam find_param_by_name(const char *name) {
+  for (int i = 0; i < PARAM_COUNT; i++) {
+    const char *param_name = config_get_param_name((ConfigParam)i);
+    if (strcmp(name, param_name) == 0) {
+      return (ConfigParam)i;
+    }
+  }
+  return PARAM_COUNT; // Invalid parameter
+}
+
 // --- Serial interface setup ---
 void serial_cmd_init() {
   Serial.begin(9600);
@@ -293,7 +304,8 @@ static void handle_help(const char *) {
   Serial.println(F("  SIZE n [ACTIVE|INACTIVE]              - Set buffer size "
                    "(default: inactive)"));
   Serial.println(F("  CONFIG [GET|SET|RESET] [PARAM] [VALUE] - Get/set "
-                   "configuration parameters"));
+                   "configuration parameters (MODE, PPS, LASER_DELAY, "
+                   "DWELL_US, DEBUG_FLAGS)"));
   Serial.println(F("  EEPROM [READ|WRITE|DUMP] - EEPROM operations"));
   Serial.println(
       F("  HELP                                  - Show this help message"));
@@ -311,10 +323,16 @@ static void handle_config(const char *args) {
   if (parsed < 1) {
     // Just "CONFIG" - show all parameters
     Serial.println(F("Current Configuration (RAM):"));
-    Serial.print(F("  Mode: "));
-    Serial.println(config_get(PARAM_MODE));
-    Serial.print(F("  PPS: "));
-    Serial.println(config_get(PARAM_PPS));
+
+    // Automatically iterate through all config parameters
+    for (uint8_t i = 0; i < PARAM_COUNT; i++) {
+      ConfigParam current_param = (ConfigParam)i;
+      Serial.print(F("  "));
+      Serial.print(config_get_param_name(current_param));
+      Serial.print(F(": "));
+      Serial.println(config_get(current_param));
+    }
+
     Serial.print(F("  EEPROM Size: "));
     Serial.println(EEPROM.length());
     Serial.print(F("  Config Size: "));
@@ -329,15 +347,16 @@ static void handle_config(const char *args) {
       return;
     }
 
-    if (strcmp(param, "MODE") == 0) {
-      Serial.print(F("MODE: "));
-      Serial.println(config_get(PARAM_MODE));
-    } else if (strcmp(param, "PPS") == 0) {
-      Serial.print(F("PPS: "));
-      Serial.println(config_get(PARAM_PPS));
-    } else {
+    // Find parameter by name
+    ConfigParam target_param = find_param_by_name(param);
+    if (target_param == PARAM_COUNT) {
       Serial.println(F("ERR: Unknown parameter"));
+      return;
     }
+
+    Serial.print(param);
+    Serial.print(F(": "));
+    Serial.println(config_get(target_param));
 
   } else if (strcmp(subcmd, "SET") == 0) {
     if (parsed < 3) {
@@ -345,16 +364,15 @@ static void handle_config(const char *args) {
       return;
     }
 
-    bool success = false;
-    if (strcmp(param, "MODE") == 0) {
-      success = config_set(PARAM_MODE, value);
-    } else if (strcmp(param, "PPS") == 0) {
-      success = config_set(PARAM_PPS, value);
-    } else {
+    // Find parameter by name
+    ConfigParam target_param = find_param_by_name(param);
+    if (target_param == PARAM_COUNT) {
       Serial.println(F("ERR: Unknown parameter"));
       return;
     }
 
+    // Set the parameter
+    bool success = config_set(target_param, value);
     if (success) {
       Serial.println(
           F("OK - Parameter updated in RAM (use EEPROM WRITE to save)"));

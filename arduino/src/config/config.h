@@ -1,59 +1,74 @@
 #pragma once
 
-#include <Arduino.h>
+#include <stdint.h>
 
-// Configuration constants
-#define CONFIG_MAGIC 0x6A17   // "GA17" in hex - validates EEPROM data
-#define CONFIG_VERSION 1      // Current config structure version
-#define CONFIG_EEPROM_START 0 // EEPROM address offset
+// === CONFIGURATION CONSTANTS ===
 
-// Default parameter values
-#define CONFIG_DEFAULT_MODE MODE_DUAL_BUFFER
-#define CONFIG_DEFAULT_PPS 1000
+#define CONFIG_MAGIC 0x6A17
+#define CONFIG_EEPROM_START 0
+#define CONFIG_EEPROM_SIZE 32 // Two EEPROM pages (16 bytes each)
+
+// Parameter enumeration for versioning (ADD NEW PARAMS BEFORE PARAM_COUNT)
+enum ConfigParam {
+  PARAM_MODE = 0,
+  PARAM_DEBUG_FLAGS = 1,
+  PARAM_PPS = 2,
+  PARAM_MAX_BUFFER_INDEX = 3,
+  PARAM_MAX_STEP_LENGTH = 4,
+  PARAM_COUNT // Always last - this is our version number
+};
+
+#define CONFIG_CURRENT_VERSION PARAM_COUNT
 
 // Operating modes
-enum GalvoMode : uint8_t { MODE_DUAL_BUFFER, MODE_COUNT };
+enum SystemMode {
+  MODE_DUAL_BUFFER = 0,
+  MODE_COUNT
+  // Add new modes here as needed
+};
 
-// Parameter enumeration for generic access
-enum ConfigParam : uint8_t { PARAM_MODE, PARAM_PPS, PARAM_COUNT };
+// === DEFAULT VALUES ===
 
-// Configuration structure - 16 bytes (single EEPROM page)
+#define CONFIG_DEFAULT_MODE 0
+#define CONFIG_DEFAULT_DEBUG_FLAGS 0x00
+#define CONFIG_DEFAULT_PPS 10000
+#define CONFIG_DEFAULT_MAX_BUFFER_INDEX 255
+#define CONFIG_DEFAULT_MAX_STEP_LENGTH 5
+
+// === CONFIGURATION STRUCTURE ===
+
 struct GalvoConfig {
-  uint16_t magic;      // Validation marker (CONFIG_MAGIC)
-  uint8_t version;     // Structure version
-  uint8_t mode;        // Current operating mode (GalvoMode)
-  uint16_t pps;        // Points per second
-  uint8_t reserved[9]; // Future expansion
-  uint8_t checksum;    // Simple validation checksum
-} __attribute__((packed));
+  uint16_t magic;      // Magic number for validation
+  uint8_t param_count; // Number of valid parameters (version)
 
-// Global configuration instance
+  // Parameters in enumeration order
+  uint8_t mode;             // PARAM_MODE
+  uint8_t debug_flags;      // PARAM_DEBUG_FLAGS
+  uint16_t pps;             // PARAM_PPS
+  uint8_t max_buffer_index; // PARAM_MAX_BUFFER_INDEX
+  uint8_t max_step_length;  // PARAM_MAX_STEP_LENGTH
+
+  uint8_t reserved[22]; // Future expansion
+  uint8_t checksum;     // XOR checksum (always last)
+};
+
+// === GLOBAL CONFIGURATION ===
+
 extern GalvoConfig g_config;
 
-// === INITIALIZATION & PERSISTENCE ===
+// === FUNCTION DECLARATIONS ===
 
-// Initialize configuration system - call once in setup()
+// Initialization & persistence
 void config_init(void);
-
-// Load configuration from EEPROM
 bool config_load_from_eeprom(void);
-
-// Save current configuration to EEPROM
 bool config_save_to_eeprom(void);
-
-// Reset to factory defaults
 void config_load_defaults(void);
-
-// Reset EEPROM configuration (useful for debugging)
 void config_reset_eeprom(void);
 
-// === PARAMETER ACCESS ===
-
-// Generic parameter access
+// Parameter access
 uint16_t config_get(ConfigParam param);
 bool config_set(ConfigParam param, uint16_t value);
+const char *config_get_param_name(ConfigParam param);
 
-// === UTILITY ===
-
-// Calculate checksum for validation
+// Utility
 uint8_t config_calculate_checksum(const GalvoConfig *config);
