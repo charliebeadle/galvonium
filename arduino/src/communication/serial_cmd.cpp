@@ -1,9 +1,9 @@
 #include "serial_cmd.h"
 #include "../config/config.h"
+#include "../config/eeprom.h"
 #include "../core/timer.h"
 #include "../modes/buffer.h"
 #include <Arduino.h>
-#include <EEPROM.h>
 #include <avr/pgmspace.h>
 #include <string.h>
 
@@ -334,7 +334,7 @@ static void handle_config(const char *args) {
     }
 
     Serial.print(F("  EEPROM Size: "));
-    Serial.println(EEPROM.length());
+    Serial.println(EEPROM_CONFIG_SIZE);
     Serial.print(F("  Config Size: "));
     Serial.println(sizeof(GalvoConfig));
     Serial.println(F("EOC"));
@@ -425,15 +425,15 @@ static void handle_eeprom(const char *args) {
     // Show raw EEPROM contents for debugging
     Serial.println(F("EEPROM Debug Info:"));
     Serial.print(F("  EEPROM Size: "));
-    Serial.println(EEPROM.length());
+    Serial.println(EEPROM_CONFIG_SIZE);
     Serial.print(F("  Config Size: "));
     Serial.println(sizeof(GalvoConfig));
     Serial.print(F("  Start Address: "));
-    Serial.println(F("0"));
+    Serial.println(EEPROM_CONFIG_START);
 
     Serial.println(F("Raw EEPROM Contents:"));
-    for (size_t i = 0; i < sizeof(GalvoConfig); i++) {
-      uint8_t byte_val = EEPROM.read(0 + i);
+    for (size_t i = 0; i < EEPROM_CONFIG_SIZE; i++) {
+      uint8_t byte_val = eeprom_read_config_byte(i);
       Serial.print(F("  ["));
       Serial.print(i);
       Serial.print(F("]: 0x"));

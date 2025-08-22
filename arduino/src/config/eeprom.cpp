@@ -74,3 +74,38 @@ void eeprom_read_bytes(uint16_t address, uint8_t *data, uint8_t length) {
     data[i] = EEPROM.read(address + i);
   }
 }
+
+// === CONVENIENCE FUNCTIONS (CONFIG AREA ONLY) ===
+
+uint8_t eeprom_read_config_byte(uint8_t offset) {
+  if (offset >= EEPROM_CONFIG_SIZE) {
+    return EEPROM_UNINITIALIZED_VALUE; // Return uninitialized value if out of
+                                       // bounds
+  }
+  return EEPROM.read(EEPROM_CONFIG_START + offset);
+}
+
+uint16_t eeprom_read_config_word(uint8_t offset) {
+  if (offset + 1 >= EEPROM_CONFIG_SIZE) {
+    return 0xFFFF; // Return invalid value if out of bounds
+  }
+
+  // Read little-endian: low byte first, then high byte
+  uint8_t low_byte = EEPROM.read(EEPROM_CONFIG_START + offset);
+  uint8_t high_byte = EEPROM.read(EEPROM_CONFIG_START + offset + 1);
+
+  return (uint16_t)high_byte << 8 | low_byte;
+}
+
+bool eeprom_read_config_block(uint8_t *data, uint8_t offset, uint8_t length) {
+  if (data == nullptr || offset + length > EEPROM_CONFIG_SIZE) {
+    return false; // Invalid parameters or would read beyond config area
+  }
+
+  // Read the requested block
+  for (uint8_t i = 0; i < length; i++) {
+    data[i] = EEPROM.read(EEPROM_CONFIG_START + offset + i);
+  }
+
+  return true;
+}

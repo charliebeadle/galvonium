@@ -8,7 +8,7 @@
 void setup() {
   buffer_init();
   serial_cmd_init();
-  initTimer();
+  //initTimer();
   config_init();
 }
 
