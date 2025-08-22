@@ -1,5 +1,4 @@
-#ifndef SERIAL_CMD_H
-#define SERIAL_CMD_H
+#pragma once
 
 #include <Arduino.h>
 
@@ -20,6 +19,11 @@ enum CommandType {
   CMD_UNKNOWN
 };
 
+struct CommandEntry {
+    const char *name;
+    CommandType type;
+  };
+
 // ========== FUNCTION DECLARATIONS ==========
 
 // Initialize serial communication
@@ -34,4 +38,3 @@ CommandType parse_command(const char *cmd, const char **arg_start);
 // Process a complete serial command
 void process_serial_command(const char *cmd);
 
-#endif // SERIAL_CMD_H

@@ -67,10 +67,7 @@ const char cmd_config[] PROGMEM = "CONFIG";
 const char cmd_eeprom[] PROGMEM = "EEPROM";
 
 // --- Command table stored in PROGMEM ---
-struct CommandEntry {
-  const char *name;
-  CommandType type;
-};
+
 
 static const CommandEntry command_table[] PROGMEM = {
     {cmd_write, CMD_WRITE},   {cmd_clear, CMD_CLEAR},  {cmd_swap, CMD_SWAP},
