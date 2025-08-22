@@ -1,12 +1,11 @@
 #pragma once
 
+#include "eeprom.h"
 #include <stdint.h>
 
 // === CONFIGURATION CONSTANTS ===
 
 #define CONFIG_MAGIC 0x6A17
-#define CONFIG_EEPROM_START 0
-#define CONFIG_EEPROM_SIZE 32 // Two EEPROM pages (16 bytes each)
 
 // Parameter enumeration for versioning (ADD NEW PARAMS BEFORE PARAM_COUNT)
 enum ConfigParam {

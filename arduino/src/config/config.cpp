@@ -1,6 +1,5 @@
 #include "config.h"
 #include <Arduino.h>
-#include <EEPROM.h>
 #include <avr/pgmspace.h>
 #include <string.h>
 
@@ -75,28 +74,16 @@ static uint16_t config_get_default(ConfigParam param) {
 void config_init(void) {
   if (!config_load_from_eeprom()) {
     config_load_defaults();
+    config_save_to_eeprom();
   }
 }
 
 bool config_load_from_eeprom(void) {
   GalvoConfig temp_config;
 
-  // Read configuration from EEPROM byte by byte to avoid alignment issues
-  uint8_t *data = (uint8_t *)&temp_config;
-  for (size_t i = 0; i < sizeof(GalvoConfig); i++) {
-    data[i] = EEPROM.read(CONFIG_EEPROM_START + i);
-  }
-
-  // Check if EEPROM is uninitialized (all 0xFF)
-  bool is_uninitialized = true;
-  for (size_t i = 0; i < sizeof(GalvoConfig); i++) {
-    if (data[i] != 0xFF) {
-      is_uninitialized = false;
-      break;
-    }
-  }
-
-  if (is_uninitialized) {
+  // Load configuration from EEPROM
+  if (!eeprom_load_config((uint8_t *)&temp_config,
+                          (uint8_t)sizeof(GalvoConfig))) {
     return false;
   }
 
@@ -140,15 +127,11 @@ bool config_save_to_eeprom(void) {
   g_config.checksum = config_calculate_checksum(&g_config);
 
   // Verify structure size matches EEPROM allocation
-  if (sizeof(GalvoConfig) != CONFIG_EEPROM_SIZE) {
+  if (sizeof(GalvoConfig) != EEPROM_CONFIG_SIZE) {
     return false;
   }
 
-  uint8_t *data = (uint8_t *)&g_config;
-  for (size_t i = 0; i < sizeof(GalvoConfig); i++) {
-    EEPROM.update(CONFIG_EEPROM_START + i, data[i]);
-  }
-  return true;
+  return eeprom_save_config((uint8_t *)&g_config, (uint8_t)sizeof(GalvoConfig));
 }
 
 void config_load_defaults(void) {
@@ -163,17 +146,17 @@ void config_load_defaults(void) {
   }
 
   // Clear reserved bytes
-  memset(g_config.reserved, 0, sizeof(g_config.reserved));
+  for (uint8_t i = 0; i < sizeof(g_config.reserved); i++) {
+    g_config.reserved[i] = 0;
+  }
 
   // Calculate initial checksum
   g_config.checksum = config_calculate_checksum(&g_config);
 }
 
 void config_reset_eeprom(void) {
-  // Clear EEPROM area by writing 0xFF (uninitialized state)
-  for (size_t i = 0; i < CONFIG_EEPROM_SIZE; i++) {
-    EEPROM.write(CONFIG_EEPROM_START + i, 0xFF);
-  }
+  // Clear EEPROM area
+  eeprom_clear_config_area();
 
   // Load defaults and save
   config_load_defaults();

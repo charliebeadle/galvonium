@@ -429,11 +429,11 @@ static void handle_eeprom(const char *args) {
     Serial.print(F("  Config Size: "));
     Serial.println(sizeof(GalvoConfig));
     Serial.print(F("  Start Address: "));
-    Serial.println(CONFIG_EEPROM_START);
+    Serial.println(F("0"));
 
     Serial.println(F("Raw EEPROM Contents:"));
     for (size_t i = 0; i < sizeof(GalvoConfig); i++) {
-      uint8_t byte_val = EEPROM.read(CONFIG_EEPROM_START + i);
+      uint8_t byte_val = EEPROM.read(0 + i);
       Serial.print(F("  ["));
       Serial.print(i);
       Serial.print(F("]: 0x"));
