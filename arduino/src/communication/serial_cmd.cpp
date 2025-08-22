@@ -3,26 +3,58 @@
 #include "../config/eeprom.h"
 #include "../core/timer.h"
 #include "../modes/buffer.h"
-#include <Arduino.h>
 #include <avr/pgmspace.h>
 #include <string.h>
-
-#define SERIAL_BUFFER_SIZE 32 // Reduced from 64, saves 32 bytes
 
 static char serial_buf[SERIAL_BUFFER_SIZE];
 static int serial_buf_pos = 0;
 
-enum CommandType {
-  CMD_WRITE,
-  CMD_CLEAR,
-  CMD_SWAP,
-  CMD_DUMP,
-  CMD_SIZE,
-  CMD_HELP,
-  CMD_CONFIG,
-  CMD_EEPROM,
-  CMD_UNKNOWN
-};
+// ========== KEY OPTIMIZATION: SHARED PARSE BUFFER ==========
+// Instead of each function having its own char arrays, share one
+static char
+    g_parse_buf[PARSE_BUFFER_SIZE]; // Shared across all handler functions
+
+// ========== KEY OPTIMIZATION: SIMPLE INTEGER PARSER ==========
+// Replaces sscanf for integer parsing - saves ~100 bytes of stack
+static int parse_next_int(const char *&ptr) {
+  // Skip spaces
+  while (*ptr == ' ')
+    ptr++;
+
+  // Handle sign
+  bool negative = false;
+  if (*ptr == '-') {
+    negative = true;
+    ptr++;
+  }
+
+  // Parse digits
+  int value = 0;
+  while (*ptr >= '0' && *ptr <= '9') {
+    value = value * 10 + (*ptr - '0');
+    ptr++;
+  }
+
+  return negative ? -value : value;
+}
+
+// Extract next word into buffer, return true if found
+static bool extract_word(const char *&ptr, char *dest, size_t max_len) {
+  // Skip leading spaces
+  while (*ptr == ' ')
+    ptr++;
+
+  if (*ptr == '\0')
+    return false;
+
+  size_t i = 0;
+  while (*ptr && *ptr != ' ' && i < max_len - 1) {
+    dest[i++] = *ptr++;
+  }
+  dest[i] = '\0';
+
+  return i > 0;
+}
 
 // Command names and help - only command names need to be in PROGMEM for parsing
 const char cmd_write[] PROGMEM = "WRITE";
@@ -150,24 +182,33 @@ void process_serial_command(const char *cmd) {
 
 // --- Command Handlers ---
 static void handle_write(const char *args) {
-  int idx, x, y, flags;
-  char modifier[16] = "";
+  // ========== OPTIMIZED: No sscanf, no local arrays ==========
+  const char *ptr = args;
+  int idx = parse_next_int(ptr);
+  int x = parse_next_int(ptr);
+  int y = parse_next_int(ptr);
+  int flags = parse_next_int(ptr);
 
-  // Parse required parameters first, then optional modifier
-  int parsed = sscanf(args, "%d %d %d %d %s", &idx, &x, &y, &flags, modifier);
+  // Extract modifier using shared buffer
+  bool has_modifier = extract_word(ptr, g_parse_buf, sizeof(g_parse_buf));
 
-  if (parsed < 4) {
+  // Validate inputs
+  if (idx < 0 || x < 0 || y < 0) {
     Serial.println(F("ERR: Usage WRITE idx x y flags [ACTIVE|INACTIVE]"));
     return;
   }
 
   bool use_active = false;
-  if (parsed == 5) {
-    if (strcmp(modifier, "ACTIVE") == 0) {
+  if (has_modifier) {
+    char modifier_first = g_parse_buf[0];
+    switch (modifier_first) {
+    case 'A': // ACTIVE
       use_active = true;
-    } else if (strcmp(modifier, "INACTIVE") == 0) {
+      break;
+    case 'I': // INACTIVE
       use_active = false;
-    } else {
+      break;
+    default:
       Serial.println(F("ERR: Buffer modifier must be ACTIVE or INACTIVE"));
       return;
     }
@@ -184,16 +225,21 @@ static void handle_write(const char *args) {
 }
 
 static void handle_clear(const char *args) {
-  char modifier[16] = "";
-  int parsed = sscanf(args, "%s", modifier);
+  // ========== OPTIMIZED: Reuse shared buffer ==========
+  const char *ptr = args;
+  bool has_modifier = extract_word(ptr, g_parse_buf, sizeof(g_parse_buf));
 
   bool use_active = false;
-  if (parsed == 1) {
-    if (strcmp(modifier, "ACTIVE") == 0) {
+  if (has_modifier) {
+    char modifier_first = g_parse_buf[0];
+    switch (modifier_first) {
+    case 'A': // ACTIVE
       use_active = true;
-    } else if (strcmp(modifier, "INACTIVE") == 0) {
+      break;
+    case 'I': // INACTIVE
       use_active = false;
-    } else {
+      break;
+    default:
       Serial.println(F("ERR: Buffer modifier must be ACTIVE or INACTIVE"));
       return;
     }
@@ -216,16 +262,21 @@ static void handle_swap(const char *) {
 }
 
 static void handle_dump(const char *args) {
-  char modifier[16] = "";
-  int parsed = sscanf(args, "%s", modifier);
+  // ========== OPTIMIZED: Reuse shared buffer ==========
+  const char *ptr = args;
+  bool has_modifier = extract_word(ptr, g_parse_buf, sizeof(g_parse_buf));
 
   bool use_active = false;
-  if (parsed == 1) {
-    if (strcmp(modifier, "ACTIVE") == 0) {
+  if (has_modifier) {
+    char modifier_first = g_parse_buf[0];
+    switch (modifier_first) {
+    case 'A': // ACTIVE
       use_active = true;
-    } else if (strcmp(modifier, "INACTIVE") == 0) {
+      break;
+    case 'I': // INACTIVE
       use_active = false;
-    } else {
+      break;
+    default:
       Serial.println(F("ERR: Buffer modifier must be ACTIVE or INACTIVE"));
       Serial.println(F("EOC"));
       return;
@@ -244,7 +295,6 @@ static void handle_dump(const char *args) {
   Serial.println(steps);
 
   for (int i = 0; i < steps; ++i) {
-
     Serial.print(i);
     Serial.print(F(": "));
     Serial.print(source_buffer[i].x);
@@ -259,23 +309,29 @@ static void handle_dump(const char *args) {
 }
 
 static void handle_size(const char *args) {
-  int n;
-  char modifier[16] = "";
+  // ========== OPTIMIZED: No sscanf ==========
+  const char *ptr = args;
+  int n = parse_next_int(ptr);
 
-  int parsed = sscanf(args, "%d %s", &n, modifier);
+  // Extract modifier using shared buffer
+  bool has_modifier = extract_word(ptr, g_parse_buf, sizeof(g_parse_buf));
 
-  if (parsed < 1 || n < 0 || n > MAX_STEPS) {
+  if (n < 0 || n > MAX_STEPS) {
     Serial.println(F("ERR: Usage SIZE n [ACTIVE|INACTIVE]"));
     return;
   }
 
   bool use_active = false;
-  if (parsed == 2) {
-    if (strcmp(modifier, "ACTIVE") == 0) {
+  if (has_modifier) {
+    char modifier_first = g_parse_buf[0];
+    switch (modifier_first) {
+    case 'A': // ACTIVE
       use_active = true;
-    } else if (strcmp(modifier, "INACTIVE") == 0) {
+      break;
+    case 'I': // INACTIVE
       use_active = false;
-    } else {
+      break;
+    default:
       Serial.println(F("ERR: Buffer modifier must be ACTIVE or INACTIVE"));
       return;
     }
@@ -291,7 +347,7 @@ static void handle_size(const char *args) {
 }
 
 static void handle_help(const char *) {
-  // Print help text directly from PROGMEM using Serial.println(F())
+  // Keep original help text - F() macro is fine for PROGMEM storage
   Serial.println(F("Galvonium Serial Commands:"));
   Serial.println(F("  WRITE idx x y flags [ACTIVE|INACTIVE] - Write step "
                    "(default: inactive)"));
@@ -304,8 +360,8 @@ static void handle_help(const char *) {
   Serial.println(F("  SIZE n [ACTIVE|INACTIVE]              - Set buffer size "
                    "(default: inactive)"));
   Serial.println(F("  CONFIG [GET|SET|RESET] [PARAM] [VALUE] - Get/set "
-                   "configuration parameters (MODE, PPS, LASER_DELAY, "
-                   "DWELL_US, DEBUG_FLAGS)"));
+                   "configuration parameters (MODE, PPS, MAX_BUFFER_INDEX, "
+                   "MAX_STEP_LENGTH, DEBUG_FLAGS)"));
   Serial.println(F("  EEPROM [READ|WRITE|DUMP] - EEPROM operations"));
   Serial.println(
       F("  HELP                                  - Show this help message"));
@@ -313,14 +369,13 @@ static void handle_help(const char *) {
 }
 
 static void handle_config(const char *args) {
-  char subcmd[16] = "";
-  char param[16] = "";
-  int value = 0;
+  // ========== OPTIMIZED: Use shared buffer, no sscanf ==========
+  const char *ptr = args;
 
-  // Parse command: CONFIG [GET|SET] [PARAM] [VALUE]
-  int parsed = sscanf(args, "%s %s %d", subcmd, param, &value);
+  // Get subcommand
+  bool has_subcmd = extract_word(ptr, g_parse_buf, sizeof(g_parse_buf));
 
-  if (parsed < 1) {
+  if (!has_subcmd) {
     // Just "CONFIG" - show all parameters
     Serial.println(F("Current Configuration (RAM):"));
 
@@ -341,69 +396,88 @@ static void handle_config(const char *args) {
     return;
   }
 
-  if (strcmp(subcmd, "GET") == 0) {
-    if (parsed < 2) {
+  // Use first character for fast comparison
+  char subcmd_first = g_parse_buf[0];
+
+  // Declare variables outside switch to avoid redeclaration errors
+  ConfigParam target_param;
+  int value;
+  bool success;
+
+  switch (subcmd_first) {
+  case 'G': // GET
+    // Get parameter name
+    if (!extract_word(ptr, g_parse_buf, sizeof(g_parse_buf))) {
       Serial.println(F("ERR: Usage CONFIG GET <PARAM>"));
       return;
     }
 
     // Find parameter by name
-    ConfigParam target_param = find_param_by_name(param);
+    target_param = find_param_by_name(g_parse_buf);
     if (target_param == PARAM_COUNT) {
       Serial.println(F("ERR: Unknown parameter"));
       return;
     }
 
-    Serial.print(param);
+    Serial.print(g_parse_buf);
     Serial.print(F(": "));
     Serial.println(config_get(target_param));
+    break;
 
-  } else if (strcmp(subcmd, "SET") == 0) {
-    if (parsed < 3) {
+  case 'S': // SET
+    // Get parameter name
+    if (!extract_word(ptr, g_parse_buf, sizeof(g_parse_buf))) {
       Serial.println(F("ERR: Usage CONFIG SET <PARAM> <VALUE>"));
       return;
     }
 
     // Find parameter by name
-    ConfigParam target_param = find_param_by_name(param);
+    target_param = find_param_by_name(g_parse_buf);
     if (target_param == PARAM_COUNT) {
       Serial.println(F("ERR: Unknown parameter"));
       return;
     }
 
+    // Get value
+    value = parse_next_int(ptr);
+
     // Set the parameter
-    bool success = config_set(target_param, value);
+    success = config_set(target_param, value);
     if (success) {
       Serial.println(
           F("OK - Parameter updated in RAM (use EEPROM WRITE to save)"));
     } else {
       Serial.println(F("ERR: Invalid value"));
     }
+    break;
 
-  } else if (strcmp(subcmd, "RESET") == 0) {
+  case 'R': // RESET
     // Reset configuration to defaults (RAM only)
     Serial.println(F("Resetting configuration to defaults..."));
     config_load_defaults();
     Serial.println(
         F("OK - Configuration reset to defaults (use EEPROM WRITE to save)"));
+    break;
 
-  } else {
+  default:
     Serial.println(F("ERR: Usage CONFIG [GET|SET|RESET] [PARAM] [VALUE]"));
+    break;
   }
 }
 
 static void handle_eeprom(const char *args) {
-  char subcmd[16] = "";
+  // ========== OPTIMIZED: Use shared buffer ==========
+  const char *ptr = args;
 
-  // Parse command: EEPROM [READ|WRITE|DUMP]
-  int parsed = sscanf(args, "%s", subcmd);
-
-  if (parsed < 1) {
+  // Get subcommand
+  if (!extract_word(ptr, g_parse_buf, sizeof(g_parse_buf))) {
     Serial.println(F("ERR: Usage EEPROM [READ|WRITE|DUMP]"));
     return;
   }
 
-  if (strcmp(subcmd, "READ") == 0) {
+  char subcmd_first = g_parse_buf[0];
+  switch (subcmd_first) {
+  case 'R': // READ
     // Read configuration from EEPROM into RAM
     Serial.println(F("Reading configuration from EEPROM..."));
     if (config_load_from_eeprom()) {
@@ -411,8 +485,9 @@ static void handle_eeprom(const char *args) {
     } else {
       Serial.println(F("ERR: Failed to read from EEPROM"));
     }
+    break;
 
-  } else if (strcmp(subcmd, "WRITE") == 0) {
+  case 'W': // WRITE
     // Write current RAM configuration to EEPROM
     Serial.println(F("Writing configuration to EEPROM..."));
     if (config_save_to_eeprom()) {
@@ -420,8 +495,9 @@ static void handle_eeprom(const char *args) {
     } else {
       Serial.println(F("ERR: Failed to write to EEPROM"));
     }
+    break;
 
-  } else if (strcmp(subcmd, "DUMP") == 0) {
+  case 'D': // DUMP
     // Show raw EEPROM contents for debugging
     Serial.println(F("EEPROM Debug Info:"));
     Serial.print(F("  EEPROM Size: "));
@@ -442,8 +518,10 @@ static void handle_eeprom(const char *args) {
       Serial.println(byte_val, HEX);
     }
     Serial.println(F("EOC"));
+    break;
 
-  } else {
+  default:
     Serial.println(F("ERR: Usage EEPROM [READ|WRITE|DUMP]"));
+    break;
   }
 }
