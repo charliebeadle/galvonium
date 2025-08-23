@@ -10,9 +10,10 @@ void dac_output_init(void) {
 }
 
 // Function to output DAC values for X and Y coordinates
-void outputDAC(uint8_t x, uint8_t y) {
-  uint16_t packetX = DAC_FLAGS_A << 8 | x << 4;
-  uint16_t packetY = DAC_FLAGS_B << 8 | y << 4;
+void outputDAC(uint16_t x, uint16_t y) {
+
+  uint16_t packetX = DAC_FLAGS_A << 8 | x >> 4;
+  uint16_t packetY = DAC_FLAGS_B << 8 | y >> 4;
 
   PORTB &= ~(1 << PB2); // Set CS low
   SPI.transfer16(packetX);

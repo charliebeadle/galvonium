@@ -7,4 +7,4 @@
 
 // Function declarations
 void dac_output_init(void);
-void outputDAC(uint8_t x, uint8_t y);
+void outputDAC(uint16_t x, uint16_t y);

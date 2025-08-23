@@ -8,7 +8,7 @@ GalvoConfig g_config;
 
 // === PARAMETER NAMES IN PROGMEM ===
 static const char *const param_names[] PROGMEM = {
-    "MODE", "DEBUG_FLAGS", "PPS", "MAX_BUFFER_INDEX", "MAX_STEP_LENGTH"};
+    "MODE", "DEBUG_FLAGS", "PPS", "MAX_BUFFER_IDX", "MAXSTEP"};
 
 // === PARAMETER ACCESS HELPERS ===
 

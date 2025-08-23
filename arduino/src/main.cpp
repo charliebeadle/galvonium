@@ -6,10 +6,10 @@
 
 
 void setup() {
+  config_init();
   buffer_init();
   serial_cmd_init();
   initTimer();
-  config_init();
 }
 
 void loop() { serial_cmd_poll(); }

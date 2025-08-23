@@ -68,7 +68,6 @@ const char cmd_eeprom[] PROGMEM = "EEPROM";
 
 // --- Command table stored in PROGMEM ---
 
-
 static const CommandEntry command_table[] PROGMEM = {
     {cmd_write, CMD_WRITE},   {cmd_clear, CMD_CLEAR},  {cmd_swap, CMD_SWAP},
     {cmd_dump, CMD_DUMP},     {cmd_size, CMD_SIZE},    {cmd_help, CMD_HELP},
@@ -313,7 +312,9 @@ static void handle_size(const char *args) {
   // Extract modifier using shared buffer
   bool has_modifier = extract_word(ptr, g_parse_buf, sizeof(g_parse_buf));
 
-  if (n < 0 || n > MAX_STEPS) {
+  // Use config value instead of macro for validation
+  uint8_t max_index = g_config.max_buffer_index;
+  if (n < 0 || n > (max_index + 1)) {
     Serial.println(F("ERR: Usage SIZE n [ACTIVE|INACTIVE]"));
     return;
   }

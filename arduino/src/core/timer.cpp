@@ -1,11 +1,12 @@
 
+#include "../config/config.h"
 #include "../galvo/dac_output.h"
 #include "../modes/buffer.h"
+#include "../graphics/interpolation.h"
 #include <Arduino.h>
 
+
 // Timer configuration constants
-#define DEFAULT_PPS 1000    // Default points per second
-#define TIMER_PRESCALER 8   // Timer prescaler value
 #define CLOCK_FREQ 16000000 // Arduino clock frequency in Hz
 #define LASER_PIN 3         // Pin for laser control
 #define LASER_BIT 0x01      // Bit mask for laser state in flags
@@ -15,9 +16,17 @@ volatile bool readyForFrame = true;
 volatile bool swapRequested = false;
 volatile int currentStep = 0;
 
+uint16_t last_x = 0;
+uint16_t last_y = 0;
+
 void initTimer() {
+  // Get PPS from config instead of hardcoded value
+  uint16_t pps = config_get(PARAM_PPS);
+
   // Calculate the timer compare value based on the desired PPS
-  int compareValue = (CLOCK_FREQ / (2 * TIMER_PRESCALER * DEFAULT_PPS)) - 1;
+  // Formula: OCR1A = (F_CPU / PPS) - 1 (no prescaling)
+  // For 16MHz: OCR1A = (16MHz / PPS) - 1
+  int compareValue = (CLOCK_FREQ / pps) - 1;
 
   // Configure Timer1
   TCCR1A = 0; // Clear Timer/Counter Control Registers
@@ -26,8 +35,8 @@ void initTimer() {
   // Set CTC mode (Clear Timer on Compare Match)
   TCCR1B |= (1 << WGM12);
 
-  // Set prescaler to 8
-  TCCR1B |= (1 << CS11);
+  // No prescaling for higher precision
+  TCCR1B |= (1 << CS10);
 
   // Set compare value for the desired PPS
   OCR1A = compareValue;
@@ -70,17 +79,33 @@ ISR(TIMER1_COMPA_vect) {
     return;
   }
 
-  // Extract current step data
-  uint8_t x = buffer_active[currentStep].x;
-  uint8_t y = buffer_active[currentStep].y;
-  uint8_t flags = buffer_active[currentStep].flags;
+  if(interpolation_is_active()){
+    interpolation_next_point();
+    outputDAC(g_interpolation.current_x, g_interpolation.current_y);
+  } else{
+    uint8_t x = buffer_active[currentStep].x;
+    uint8_t y = buffer_active[currentStep].y;
+    uint8_t flags = buffer_active[currentStep].flags;
+    if(interpolation_init(last_x, last_y, x, y)){
+      interpolation_next_point();
+      outputDAC(g_interpolation.current_x, g_interpolation.current_y);
+    } else{
+      outputDAC((uint16_t)x << 8, (uint16_t)y << 8);
+    }
+    last_x = x;
+    last_y = y;
+    currentStep++;
+  }
 
-  // Extract laser state from flags
-  bool laserOn = (flags & LASER_BIT) != 0;
+  // // Extract current step data
 
-  // Output to DAC and control laser
-  outputDAC(x, y);
-  digitalWrite(LASER_PIN, laserOn ? HIGH : LOW);
 
-  currentStep++;
+  // // Extract laser state from flags
+  // bool laserOn = (flags & LASER_BIT) != 0;
+
+  // // Output to DAC and control laser
+  // outputDAC(x, y);
+  // digitalWrite(LASER_PIN, laserOn ? HIGH : LOW);
+
+
 }
