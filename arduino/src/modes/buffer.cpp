@@ -1,20 +1,14 @@
 #include "buffer.h"
 
-// Buffers and pointers - use fixed size for array declarations
-volatile Step buffer_A[MAX_STEPS_FIXED];
-volatile Step buffer_B[MAX_STEPS_FIXED];
-volatile Step *buffer_active = buffer_A;
-volatile Step *buffer_inactive = buffer_B;
-volatile int buffer_active_steps = 0;
-volatile int buffer_inactive_steps = 0;
+// Buffers and pointers are now defined in globals.cpp
 
 void buffer_init() {
-  buffer_active = buffer_A;
-  buffer_inactive = buffer_B;
-  buffer_active_steps = 0;
-  buffer_inactive_steps = 0;
-  buffer_clear(buffer_active);
-  buffer_clear(buffer_inactive);
+  g_buffer_active = g_buffer_A;
+  g_buffer_inactive = g_buffer_B;
+  g_buffer_active_steps = 0;
+  g_buffer_inactive_steps = 0;
+  buffer_clear(g_buffer_active);
+  buffer_clear(g_buffer_inactive);
 }
 
 void buffer_clear(volatile Step *buf) {
@@ -40,12 +34,12 @@ int buffer_write(volatile Step *buf, int idx, uint8_t x, uint8_t y,
 // Atomically swap active/inactive buffers
 void buffer_swap() {
   noInterrupts();
-  volatile Step *tmp = buffer_active;
-  buffer_active = buffer_inactive;
-  buffer_inactive = tmp;
+  volatile Step *tmp = g_buffer_active;
+  g_buffer_active = g_buffer_inactive;
+  g_buffer_inactive = tmp;
 
-  int tmp_steps = buffer_active_steps;
-  buffer_active_steps = buffer_inactive_steps;
-  buffer_inactive_steps = tmp_steps;
+  int tmp_steps = g_buffer_active_steps;
+  g_buffer_active_steps = g_buffer_inactive_steps;
+  g_buffer_inactive_steps = tmp_steps;
   interrupts();
 }

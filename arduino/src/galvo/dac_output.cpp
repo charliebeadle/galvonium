@@ -2,7 +2,6 @@
 #include "../core/timer.h"
 #include <SPI.h>
 
-
 void dac_output_init(void) {
   // Initialize SPI and DAC control
   DDRB |= (1 << PB2);   // Set CS pin as output

@@ -3,8 +3,7 @@
 #include <avr/pgmspace.h>
 #include <string.h>
 
-// Global configuration instance
-GalvoConfig g_config;
+// Global configuration instance is now defined in globals.cpp
 
 // === PARAMETER NAMES IN PROGMEM ===
 static const char *const param_names[] PROGMEM = {"MODE", "FLAGS", "PPS",

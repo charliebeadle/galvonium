@@ -1,19 +1,18 @@
 #include "serial_cmd.h"
 #include "../config/config.h"
-#include "../config/eeprom.h"
 #include "../config/debug.h"
+#include "../config/eeprom.h"
 #include "../core/timer.h"
 #include "../modes/buffer.h"
 #include <avr/pgmspace.h>
 #include <string.h>
 
-static char serial_buf[SERIAL_BUFFER_SIZE];
-static int serial_buf_pos = 0;
+// ========== STATIC VARIABLES ==========
+// These are now defined in globals.cpp
 
 // ========== KEY OPTIMIZATION: SHARED PARSE BUFFER ==========
 // Instead of each function having its own char arrays, share one
-static char
-    g_parse_buf[PARSE_BUFFER_SIZE]; // Shared across all handler functions
+// g_parse_buf is now defined in globals.cpp
 
 // ========== KEY OPTIMIZATION: SIMPLE INTEGER PARSER ==========
 // Replaces sscanf for integer parsing - saves ~100 bytes of stack
@@ -112,14 +111,15 @@ void serial_cmd_init() {
 void serial_cmd_poll() {
   while (Serial.available()) {
     char c = Serial.read();
+
     if (c == '\n' || c == '\r') {
-      if (serial_buf_pos > 0) {
-        serial_buf[serial_buf_pos] = 0; // Null-terminate
-        process_serial_command(serial_buf);
-        serial_buf_pos = 0;
+      if (g_serial_buf_pos > 0) {
+        g_serial_buf[g_serial_buf_pos] = 0; // Null-terminate
+        process_serial_command(g_serial_buf);
+        g_serial_buf_pos = 0;
       }
-    } else if (serial_buf_pos < SERIAL_BUFFER_SIZE - 1) {
-      serial_buf[serial_buf_pos++] = c;
+    } else if (g_serial_buf_pos < SERIAL_BUFFER_SIZE - 1) {
+      g_serial_buf[g_serial_buf_pos++] = c;
     }
   }
 }
@@ -223,7 +223,8 @@ static void handle_write(const char *args) {
   }
 
   // Select target buffer
-  volatile Step *target_buffer = use_active ? buffer_active : buffer_inactive;
+  volatile Step *target_buffer =
+      use_active ? g_buffer_active : g_buffer_inactive;
 
   if (buffer_write(target_buffer, idx, x, y, flags) == 0) {
     Serial.println(use_active ? F("OK (active buffer modified!)") : F("OK"));
@@ -254,12 +255,12 @@ static void handle_clear(const char *args) {
   }
 
   if (use_active) {
-    buffer_clear(buffer_active);
-    buffer_active_steps = 0;
+    buffer_clear(g_buffer_active);
+    g_buffer_active_steps = 0;
     Serial.println(F("OK (active buffer cleared!)"));
   } else {
-    buffer_clear(buffer_inactive);
-    buffer_inactive_steps = 0;
+    buffer_clear(g_buffer_inactive);
+    g_buffer_inactive_steps = 0;
     Serial.println(F("OK"));
   }
 }
@@ -292,8 +293,9 @@ static void handle_dump(const char *args) {
   }
 
   // Select source buffer and step count
-  volatile Step *source_buffer = use_active ? buffer_active : buffer_inactive;
-  int steps = use_active ? buffer_active_steps : buffer_inactive_steps;
+  volatile Step *source_buffer =
+      use_active ? g_buffer_active : g_buffer_inactive;
+  int steps = use_active ? g_buffer_active_steps : g_buffer_inactive_steps;
   const char *buffer_name = use_active ? "ACTIVE" : "INACTIVE";
 
   Serial.print(F("DUMP START ("));
@@ -348,10 +350,10 @@ static void handle_size(const char *args) {
   }
 
   if (use_active) {
-    buffer_active_steps = n;
+    g_buffer_active_steps = n;
     Serial.println(F("OK (active buffer size changed!)"));
   } else {
-    buffer_inactive_steps = n;
+    g_buffer_inactive_steps = n;
     Serial.println(F("OK"));
   }
 }

@@ -1,7 +1,7 @@
 #include "interpolation.h"
 #include "../config/config.h"
 
-InterpolationState g_interpolation = {0};
+// InterpolationState g_interpolation is now defined in globals.cpp
 
 bool interpolation_init(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) {
   g_interpolation.distance = chebyshev_distance(x0, y0, x1, y1);

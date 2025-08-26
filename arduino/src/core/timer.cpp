@@ -11,13 +11,7 @@
 #define LASER_PIN 3         // Pin for laser control
 #define LASER_BIT 0x01      // Bit mask for laser state in flags
 
-// State variables
-volatile bool frameShownOnce = true;
-volatile bool swapRequested = false;
-volatile int currentStep = 0;
-
-volatile uint16_t last_x = 0;
-volatile uint16_t last_y = 0;
+// State variables are now defined in globals.cpp
 
 void initTimer() {
 
@@ -45,9 +39,9 @@ void initTimer() {
   digitalWrite(LASER_PIN, LOW);
 
   // Initialize state variables
-  frameShownOnce = true;
-  swapRequested = false;
-  currentStep = 0;
+  g_frame_shown_once = true;
+  g_swap_requested = false;
+  g_current_step = 0;
 }
 
 void set_pps(uint16_t pps) { OCR1A = (CLOCK_FREQ / pps) - 1; }
@@ -58,22 +52,22 @@ void set_pps_from_config() {
 }
 
 // Function to request buffer swap (called from serial command handler)
-void requestBufferSwap() { swapRequested = true; }
+void requestBufferSwap() { g_swap_requested = true; }
 
-bool is_frame_shown_once() { return frameShownOnce; }
+bool is_frame_shown_once() { return g_frame_shown_once; }
 
 ISR(TIMER1_COMPA_vect) {
   // Check if we've completed the current frame
-  if (currentStep >= buffer_active_steps) {
-    frameShownOnce = true;
-    currentStep = 0;
+  if (g_current_step >= g_buffer_active_steps) {
+    g_frame_shown_once = true;
+    g_current_step = 0;
   }
 
   // Handle buffer swap request if ready
-  if (swapRequested && frameShownOnce) {
+  if (g_swap_requested && g_frame_shown_once) {
     buffer_swap();
-    swapRequested = false;
-    frameShownOnce = false;
+    g_swap_requested = false;
+    g_frame_shown_once = false;
     return;
   }
 
@@ -81,18 +75,18 @@ ISR(TIMER1_COMPA_vect) {
     interpolation_next_point();
     outputDAC(g_interpolation.current_x, g_interpolation.current_y);
   } else {
-    uint8_t x = buffer_active[currentStep].x;
-    uint8_t y = buffer_active[currentStep].y;
-    // uint8_t flags = buffer_active[currentStep].flags;
-    if (interpolation_init(last_x, last_y, x, y)) {
+    uint8_t x = g_buffer_active[g_current_step].x;
+    uint8_t y = g_buffer_active[g_current_step].y;
+    // uint8_t flags = g_buffer_active[g_current_step].flags;
+    if (interpolation_init(g_last_x, g_last_y, x, y)) {
       interpolation_next_point();
       outputDAC(g_interpolation.current_x, g_interpolation.current_y);
     } else {
       outputDAC((uint16_t)x << 8, (uint16_t)y << 8);
     }
-    last_x = x;
-    last_y = y;
-    currentStep++;
+    g_last_x = x;
+    g_last_y = y;
+    g_current_step++;
   }
 
   // // Extract current step data
