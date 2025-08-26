@@ -10,8 +10,8 @@ bool interpolation_init(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) {
         (g_interpolation.distance + g_config.max_step_length - 1) /
         g_config.max_step_length;
 
-    g_interpolation.step_x = (uint16_t)x1 - (uint16_t)x0;
-    g_interpolation.step_y = (uint16_t)y1 - (uint16_t)y0;
+    g_interpolation.step_x = (int16_t)x1 - (int16_t)x0;
+    g_interpolation.step_y = (int16_t)y1 - (int16_t)y0;
 
     g_interpolation.step_x = (int16_t)(((int32_t)g_interpolation.step_x << 8) /
                                        g_interpolation.steps_remaining);
@@ -37,17 +37,18 @@ bool interpolation_next_point() {
     return false;
   }
 
+  g_interpolation.steps_remaining--;
+
   if (g_interpolation.steps_remaining == 0) {
+    // Final step - snap to target
     g_interpolation.current_x = g_interpolation.target_x;
     g_interpolation.current_y = g_interpolation.target_y;
     g_interpolation.is_active = false;
-    return true;
+  } else {
+    // Intermediate step
+    g_interpolation.current_x += g_interpolation.step_x;
+    g_interpolation.current_y += g_interpolation.step_y;
   }
-
-  g_interpolation.current_x += g_interpolation.step_x;
-  g_interpolation.current_y += g_interpolation.step_y;
-
-  g_interpolation.steps_remaining--;
 
   return true;
 }

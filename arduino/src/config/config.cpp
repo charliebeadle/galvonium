@@ -7,8 +7,8 @@
 GalvoConfig g_config;
 
 // === PARAMETER NAMES IN PROGMEM ===
-static const char *const param_names[] PROGMEM = {
-    "MODE", "DEBUG_FLAGS", "PPS", "MAX_BUFFER_IDX", "MAXSTEP"};
+static const char *const param_names[] PROGMEM = {"MODE", "FLAGS", "PPS",
+                                                  "MAXBUFF", "MAXSTEP"};
 
 // === PARAMETER ACCESS HELPERS ===
 
@@ -182,6 +182,10 @@ uint16_t config_get(ConfigParam param) {
   }
 }
 
+bool config_get_flag(uint8_t flag) {
+  return (g_config.debug_flags & (1 << flag)) != 0;
+}
+
 bool config_set(ConfigParam param, uint16_t value) {
   switch (param) {
   case PARAM_MODE:
@@ -220,6 +224,20 @@ bool config_set(ConfigParam param, uint16_t value) {
     return false; // Invalid parameter
   }
   return false; // Invalid value
+}
+
+bool config_set_flag(uint8_t flag, bool value) {
+  if (flag < 8) {
+    if (value == 1) {
+      g_config.debug_flags |= (1 << flag);
+    } else if (value == 0) {
+      g_config.debug_flags &= ~(1 << flag);
+    } else {
+      return false;
+    }
+    return true;
+  }
+  return false;
 }
 
 // === PARAMETER NAME ACCESS ===

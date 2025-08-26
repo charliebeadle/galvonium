@@ -19,6 +19,12 @@ enum ConfigParam {
 
 #define CONFIG_CURRENT_VERSION PARAM_COUNT
 
+#define DEBUG_FLAG_FLIP_X 0
+#define DEBUG_FLAG_FLIP_Y 1
+#define DEBUG_FLAG_SWAP_XY 2
+#define DEBUG_FLAG_DAC_SERIAL 3
+#define DEBUG_FLAG_VERBOSE 4
+
 // Operating modes
 enum SystemMode {
   MODE_DUAL_BUFFER = 0,
@@ -66,7 +72,9 @@ void config_reset_eeprom(void);
 
 // Parameter access
 uint16_t config_get(ConfigParam param);
+bool config_get_flag(uint8_t flag);
 bool config_set(ConfigParam param, uint16_t value);
+bool config_set_flag(uint8_t flag, bool value);
 const char *config_get_param_name(ConfigParam param);
 
 // Utility

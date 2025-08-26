@@ -16,6 +16,8 @@ enum CommandType {
   CMD_HELP,
   CMD_CONFIG,
   CMD_EEPROM,
+  CMD_FLAGS,
+  CMD_DEBUG,
   CMD_UNKNOWN
 };
 

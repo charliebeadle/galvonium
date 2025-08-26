@@ -1,5 +1,7 @@
 #include "dac_output.h"
+#include "../core/timer.h"
 #include <SPI.h>
+
 
 void dac_output_init(void) {
   // Initialize SPI and DAC control
@@ -11,6 +13,13 @@ void dac_output_init(void) {
 
 // Function to output DAC values for X and Y coordinates
 void outputDAC(uint16_t x, uint16_t y) {
+
+  if (g_dac_serial && !is_frame_shown_once()) {
+
+    Serial.print(x);
+    Serial.print(" ");
+    Serial.println(y);
+  }
 
   uint16_t packetX = DAC_FLAGS_A << 8 | x >> 4;
   uint16_t packetY = DAC_FLAGS_B << 8 | y >> 4;

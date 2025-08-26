@@ -1,6 +1,7 @@
 #include "serial_cmd.h"
 #include "../config/config.h"
 #include "../config/eeprom.h"
+#include "../config/debug.h"
 #include "../core/timer.h"
 #include "../modes/buffer.h"
 #include <avr/pgmspace.h>
@@ -65,13 +66,16 @@ const char cmd_size[] PROGMEM = "SIZE";
 const char cmd_help[] PROGMEM = "HELP";
 const char cmd_config[] PROGMEM = "CONFIG";
 const char cmd_eeprom[] PROGMEM = "EEPROM";
+const char cmd_flags[] PROGMEM = "FLAGS";
+const char cmd_debug[] PROGMEM = "DEBUG";
 
 // --- Command table stored in PROGMEM ---
 
 static const CommandEntry command_table[] PROGMEM = {
-    {cmd_write, CMD_WRITE},   {cmd_clear, CMD_CLEAR},  {cmd_swap, CMD_SWAP},
-    {cmd_dump, CMD_DUMP},     {cmd_size, CMD_SIZE},    {cmd_help, CMD_HELP},
-    {cmd_config, CMD_CONFIG}, {cmd_eeprom, CMD_EEPROM}};
+    {cmd_write, CMD_WRITE},   {cmd_clear, CMD_CLEAR},   {cmd_swap, CMD_SWAP},
+    {cmd_dump, CMD_DUMP},     {cmd_size, CMD_SIZE},     {cmd_help, CMD_HELP},
+    {cmd_config, CMD_CONFIG}, {cmd_eeprom, CMD_EEPROM}, {cmd_flags, CMD_FLAGS},
+    {cmd_debug, CMD_DEBUG}};
 static const int NUM_COMMANDS =
     sizeof(command_table) / sizeof(command_table[0]);
 
@@ -84,6 +88,8 @@ static void handle_size(const char *args);
 static void handle_help(const char *args);
 static void handle_config(const char *args);
 static void handle_eeprom(const char *args);
+static void handle_flags(const char *args);
+static void handle_debug(const char *args);
 
 // --- Helper function to find parameter by name ---
 static ConfigParam find_param_by_name(const char *name) {
@@ -99,7 +105,7 @@ static ConfigParam find_param_by_name(const char *name) {
 // --- Serial interface setup ---
 void serial_cmd_init() {
   Serial.begin(9600);
-  Serial.println(F("Galvonium buffer test ready."));
+  Serial.println(F("Galvonium ready."));
 }
 
 // --- Poll for new serial commands ---
@@ -169,6 +175,12 @@ void process_serial_command(const char *cmd) {
     break;
   case CMD_EEPROM:
     handle_eeprom(args);
+    break;
+  case CMD_FLAGS:
+    handle_flags(args);
+    break;
+  case CMD_DEBUG:
+    handle_debug(args);
     break;
   default:
     Serial.println(F("ERR: Unknown command"));
@@ -463,6 +475,54 @@ static void handle_config(const char *args) {
   }
 }
 
+static void handle_flags(const char *args) {
+  // ========== OPTIMIZED: Use shared buffer ==========
+  const char *ptr = args;
+
+  int flag;
+  int value;
+
+  // Get subcommand
+  bool has_subcmd = extract_word(ptr, g_parse_buf, sizeof(g_parse_buf));
+
+  if (!has_subcmd) {
+    Serial.println(F("ERR: Usage FLAGS [GET|SET] [FLAG] [VALUE]"));
+    return;
+  }
+
+  char subcmd_first = g_parse_buf[0];
+  switch (subcmd_first) {
+  case 'G': // GET
+    flag = parse_next_int(ptr);
+    if (flag >= 8) {
+      Serial.println(F("ERR: Invalid flag"));
+      return;
+    }
+    Serial.print(F("Flag: "));
+    Serial.print(flag);
+    Serial.print(F(": "));
+    Serial.println(config_get_flag(flag));
+    break;
+  case 'S': // SET
+    flag = parse_next_int(ptr);
+    if (flag >= 8) {
+      Serial.println(F("ERR: Invalid flag"));
+      return;
+    }
+
+    value = parse_next_int(ptr);
+    if (config_set_flag(flag, value)) {
+      Serial.println(F("OK - Flag set"));
+    } else {
+      Serial.println(F("ERR: Invalid value"));
+    }
+    break;
+  default:
+    Serial.println(F("ERR: Usage FLAGS [GET|SET] [FLAG] [VALUE]"));
+    break;
+  }
+}
+
 static void handle_eeprom(const char *args) {
   // ========== OPTIMIZED: Use shared buffer ==========
   const char *ptr = args;
@@ -520,6 +580,30 @@ static void handle_eeprom(const char *args) {
 
   default:
     Serial.println(F("ERR: Usage EEPROM [READ|WRITE|DUMP]"));
+    break;
+  }
+}
+
+static void handle_debug(const char *args) {
+  // ========== OPTIMIZED: Use shared buffer ==========
+  const char *ptr = args;
+
+  // Get subcommand
+  bool has_subcmd = extract_word(ptr, g_parse_buf, sizeof(g_parse_buf));
+
+  if (!has_subcmd) {
+    Serial.println(F("ERR: Usage DEBUG [UPDATE]"));
+    return;
+  }
+
+  char subcmd_first = g_parse_buf[0];
+  switch (subcmd_first) {
+  case 'U': // UPDATE
+    debug_update_all();
+    Serial.println(F("OK - Debug flags updated"));
+    break;
+  default:
+    Serial.println(F("ERR: Usage DEBUG [UPDATE]"));
     break;
   }
 }
