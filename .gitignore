@@ -55,6 +55,7 @@ docs/*.pdf
 # Test outputs
 tests/output/
 tests/*.log
+<<<<<<< HEAD
 python/packages_Galvonium.png
 python/classes_Galvonium.png
 docs/milestones.md
@@ -62,3 +63,12 @@ arduino/src/new_architecture.md
 docs/dependencies.md
 arduino/src/migration_instructions.md
 .gitignore
+=======
+docs/dependencies.md
+docs/milestones.md
+python/classes_Galvonium.png
+python/classes.dot
+python/packages_Galvonium.png
+arduino/src/migration_instructions.md
+arduino/src/new_architecture.md
+>>>>>>> origin/restructure
