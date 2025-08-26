@@ -1,6 +1,7 @@
 #pragma once
 
 #include "eeprom.h"
+#include "globals.h"
 #include <stdint.h>
 
 // === CONFIGURATION CONSTANTS ===
@@ -58,8 +59,6 @@ struct GalvoConfig {
 };
 
 // === GLOBAL CONFIGURATION ===
-
-extern GalvoConfig g_config;
 
 // === FUNCTION DECLARATIONS ===
 

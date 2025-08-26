@@ -59,6 +59,9 @@ bool is_frame_shown_once() { return g_frame_shown_once; }
 ISR(TIMER1_COMPA_vect) {
   // Check if we've completed the current frame
   if (g_current_step >= g_buffer_active_steps) {
+    if (g_dac_serial && g_buffer_active_steps > 0 && !g_frame_shown_once) {
+      Serial.println("END");
+    }
     g_frame_shown_once = true;
     g_current_step = 0;
   }
@@ -66,6 +69,9 @@ ISR(TIMER1_COMPA_vect) {
   // Handle buffer swap request if ready
   if (g_swap_requested && g_frame_shown_once) {
     buffer_swap();
+    if (g_dac_serial && g_buffer_active_steps > 0) {
+      Serial.println("START");
+    }
     g_swap_requested = false;
     g_frame_shown_once = false;
     return;

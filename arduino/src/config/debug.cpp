@@ -57,9 +57,9 @@ void debug_set_verbose(bool enable) {
 }
 
 void debug_update_all() {
+  debug_set_verbose(config_get_flag(DEBUG_FLAG_VERBOSE));
   debug_set_flip_x(config_get_flag(DEBUG_FLAG_FLIP_X));
   debug_set_flip_y(config_get_flag(DEBUG_FLAG_FLIP_Y));
   debug_set_swap_xy(config_get_flag(DEBUG_FLAG_SWAP_XY));
   debug_set_dac_serial(config_get_flag(DEBUG_FLAG_DAC_SERIAL));
-  debug_set_verbose(config_get_flag(DEBUG_FLAG_VERBOSE));
 }

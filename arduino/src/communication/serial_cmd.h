@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../config/globals.h"
 #include <Arduino.h>
 
 // ========== CONSTANTS ==========
@@ -25,11 +26,6 @@ struct CommandEntry {
   const char *name;
   CommandType type;
 };
-
-// ========== EXTERN DECLARATIONS FOR GLOBALS ===
-extern char g_parse_buf[PARSE_BUFFER_SIZE];
-extern char g_serial_buf[SERIAL_BUFFER_SIZE];
-extern int g_serial_buf_pos;
 
 // ========== FUNCTION DECLARATIONS ==========
 

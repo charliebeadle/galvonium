@@ -14,7 +14,6 @@ void dac_output_init(void) {
 void outputDAC(uint16_t x, uint16_t y) {
 
   if (g_dac_serial && !is_frame_shown_once()) {
-
     Serial.print(x);
     Serial.print(" ");
     Serial.println(y);
