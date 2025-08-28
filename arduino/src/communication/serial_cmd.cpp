@@ -227,7 +227,14 @@ static void handle_write(const char *args) {
       use_active ? g_buffer_active : g_buffer_inactive;
 
   if (buffer_write(target_buffer, idx, x, y, flags) == 0) {
-    Serial.println(use_active ? F("OK (active buffer modified!)") : F("OK"));
+    Serial.print(idx);
+    Serial.print(F(": "));
+    Serial.print(x);
+    Serial.print(F(", "));
+    Serial.print(y);
+    Serial.print(F(","));
+    Serial.print(flags);
+    Serial.println(use_active ? F(" OK (active buffer modified!)") : F(" OK"));
   } else {
     Serial.println(F("ERR: Index out of range"));
   }

@@ -13,8 +13,8 @@ bool g_dac_serial = false;
 volatile bool g_frame_shown_once = true;
 volatile bool g_swap_requested = false;
 volatile int g_current_step = 0;
-volatile uint16_t g_last_x = 0;
-volatile uint16_t g_last_y = 0;
+volatile uint8_t g_last_x = 0;
+volatile uint8_t g_last_y = 0;
 
 // === BUFFER GLOBALS ===
 volatile Step g_buffer_A[256];

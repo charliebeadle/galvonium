@@ -7,7 +7,7 @@
 #define MAX_STEPS_FIXED 256
 
 // Dynamic size based on config for runtime validation
-#define MAX_STEPS (g_config.max_step_length + 1)
+#define MAX_STEPS (g_config.max_buffer_index + 1)
 
 // === FUNCTION DECLARATIONS ===
 void buffer_init();

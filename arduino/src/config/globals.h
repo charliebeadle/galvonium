@@ -33,8 +33,8 @@ extern bool g_dac_serial;
 extern volatile bool g_frame_shown_once;
 extern volatile bool g_swap_requested;
 extern volatile int g_current_step;
-extern volatile uint16_t g_last_x;
-extern volatile uint16_t g_last_y;
+extern volatile uint8_t g_last_x;
+extern volatile uint8_t g_last_y;
 
 // === BUFFER GLOBALS ===
 extern volatile Step

@@ -3,6 +3,7 @@ from .buffer_table import BufferTableWidget
 from .terminal_widget import TerminalWidget
 from .control_panel import ControlPanel
 from .connection_manager import ConnectionManager
+from .data_visualizer import DataVisualizer
 
 from controllers.galvo_controller import GalvoController
 
@@ -23,6 +24,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # Initialize controller and connection manager
         self._controller = GalvoController(self)
         self._connection_manager = ConnectionManager(self._controller, self)
+
+        # Initialize data visualizer
+        self._data_visualizer = None
 
         # Central layout container
         central = QtWidgets.QWidget(self)
@@ -78,6 +82,12 @@ class MainWindow(QtWidgets.QMainWindow):
         edit_menu.addAction(clear_tbl)
 
         tools_menu = menubar.addMenu("&Tools")
+
+        # Data Visualizer tool
+        data_viz_act = QtWidgets.QAction("&Data Visualizer", self)
+        data_viz_act.triggered.connect(self._open_data_visualizer)
+        tools_menu.addAction(data_viz_act)
+
         # TODO: shortcuts like F5 load, Ctrl+G write
 
         help_menu = menubar.addMenu("&Help")
@@ -169,6 +179,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # Display in terminal widget
         self.terminal.append_output(data, msg_type="received")
 
+        # Forward data to data visualizer if open
+        if self._data_visualizer and self._data_visualizer.isVisible():
+            self._data_visualizer.process_data(data)
+
     # ── Status & persistence ────────────────────────────────────────────────
     def _set_status(self, text: str, timeout_ms: int | None = None):
         if timeout_ms:
@@ -197,3 +211,13 @@ class MainWindow(QtWidgets.QMainWindow):
         split = settings.value(self.SPLIT_VERT_KEY)
         if split is not None:
             self.splitter.restoreState(split)
+
+    def _open_data_visualizer(self):
+        """Open the data visualizer window."""
+        if not self._data_visualizer or not self._data_visualizer.isVisible():
+            self._data_visualizer = DataVisualizer(self)
+            self._data_visualizer.show()
+        else:
+            # Bring to front if already open
+            self._data_visualizer.raise_()
+            self._data_visualizer.activateWindow()

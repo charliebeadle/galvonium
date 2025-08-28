@@ -67,8 +67,10 @@ ISR(TIMER1_COMPA_vect) {
   }
 
   // Handle buffer swap request if ready
-  if (g_swap_requested && g_frame_shown_once) {
+  if (g_swap_requested && g_frame_shown_once && g_current_step == 0) {
+
     buffer_swap();
+
     if (g_dac_serial && g_buffer_active_steps > 0) {
       Serial.println("START");
     }
