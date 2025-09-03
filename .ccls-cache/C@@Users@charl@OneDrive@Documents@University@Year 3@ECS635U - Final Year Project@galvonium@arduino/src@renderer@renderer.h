@@ -1,5 +1,6 @@
 #pragma once
 #include "../config.h"
+#include "../debug.h"
 #include "../types.h"
 #include "buffers.h"
 #include "interpolation.h"

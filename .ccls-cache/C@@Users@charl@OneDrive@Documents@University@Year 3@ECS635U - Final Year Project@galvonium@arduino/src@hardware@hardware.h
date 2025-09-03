@@ -1,5 +1,6 @@
 #pragma once
 #include "../config.h"
+#include "../debug.h"
 #include "dac.h"
 #include "eeprom.h"
 #include "laser.h"

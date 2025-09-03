@@ -1,15 +1,15 @@
 #pragma once
 
 #include "../config.h"
+#include "../debug.h"
 #include "../types.h"
 #include <Arduino.h>
 
-#define MAX_POINTS (MAX_BUFFER_INDEX - 1)
 struct step_ring_buf_16_t {
-  // 16 steps - hardcoded because flag_buf packed into a uint16_t
-  // Obviously could be bigger but flag_buf implementation would have to change
-  // Also 2^n allows bitwise operations for modulo
-  point_q12_4_t point_buf[16] = {0};
+  // STEP_RING_BUFFER_SIZE steps - hardcoded because flag_buf packed into a
+  // uint16_t Obviously could be bigger but flag_buf implementation would have
+  // to change Also 2^n allows bitwise operations for modulo
+  point_q12_4_t point_buf[STEP_RING_BUFFER_SIZE] = {0};
   uint16_t flag_buf = 0;
   volatile uint8_t head = 0;
   volatile uint8_t tail = 0;
@@ -26,10 +26,12 @@ struct step_ring_buf_16_t {
 
   // Buffer is full when head + 1 == tail
   // There is always one empty slot, which keeps this thread safe
-  inline bool is_full() const { return ((head + 1) & 15) == tail; }
+  inline bool is_full() const {
+    return ((head + 1) & STEP_RING_BUFFER_MASK) == tail;
+  }
 
   // The number of elements in the buffer
-  inline uint8_t size() const { return (head - tail) & 15; }
+  inline uint8_t size() const { return (head - tail) & STEP_RING_BUFFER_MASK; }
 
   // Pop the next step from the buffer
   // Returns false if the buffer is empty
@@ -40,7 +42,7 @@ struct step_ring_buf_16_t {
     *point = point_buf[tail];
     *flag = (flag_buf & (1 << tail)) != 0;
 
-    tail = (tail + 1) & 15; // modulo 16
+    tail = (tail + 1) & STEP_RING_BUFFER_MASK; // modulo STEP_RING_BUFFER_SIZE
     return true;
   }
 
@@ -57,7 +59,7 @@ struct step_ring_buf_16_t {
     flag_buf &= ~(1 << head);
     flag_buf |= (flag << head);
 
-    head = (head + 1) & 15; // modulo 16
+    head = (head + 1) & STEP_RING_BUFFER_MASK; // modulo STEP_RING_BUFFER_SIZE
 
     return true;
   }

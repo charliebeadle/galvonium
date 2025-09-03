@@ -1,10 +1,8 @@
 #pragma once
 
+#include "../config.h"
+#include "../debug.h"
 #include "../types.h"
-
-#define DEFAULT_STEP_SIZE 4
-#define DEFAULT_ACC_FACTOR 0
-#define DEFAULT_DEC_FACTOR 0
 
 enum interp_state_t {
   INTERP_STATE_READY,
