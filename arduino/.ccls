@@ -1,0 +1,16 @@
+%compile_commands.json
+%cpp -std=c++11
+%cpp -DARDUINO=10808
+%cpp -DARDUINO_AVR_UNO
+%cpp -DARDUINO_ARCH_AVR
+%cpp -DF_CPU=16000000L
+%cpp -Wno-unknown-attributes
+%h -Wno-unknown-attributes
+-Iinclude
+-Ilib
+-Isrc
+-IC:\Users\charl\.platformio\packages\framework-arduino-avr\cores\arduino
+-IC:\Users\charl\.platformio\packages\framework-arduino-avr\variants\standard
+-IC:\Users\charl\.platformio\packages\framework-arduino-avr\libraries\EEPROM\src
+-IC:\Users\charl\.platformio\packages\framework-arduino-avr\libraries\SPI\src
+

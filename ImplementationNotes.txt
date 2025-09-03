@@ -1,0 +1,209 @@
+# System Architecture Summary
+
+## Abstraction Layers
+
+### Hardware Layer
+Specific to the hardware i.e. Arduino Uno
+- SerialIO - handles TX/RX over USB serial interface between arduino and PC
+- EEPROM - handles EEPROM read/write
+- DAC - handles output to DACs
+- Timer - handles timers
+
+### Core Layer
+Specific to this application
+- Communciation - Parses comms from SerialIO and enacts changes
+- Configuration - Stores and enforces system information
+- RenderEngine - Everything to do with the graphics stuff
+- Debug - Provided debugging utilities
+
+# Typical Interactions (by Mode)
+
+## Double Buffer Mode
+
+First implemented, possibly least useful
+
+**Operational Overview**
+- Double buffer stores pairs of coords plus a flag byte
+- Inactive buffer filled with data via serial
+- Active buffer looped thru by ISR/renderer
+    - Renderer stores current index and interpolation info
+	- Timer requests next point from renderer
+	- When a frame is ended, renderer requests swap? or does ISR request swap?
+	- Swap only done when serial requests too (in this current implementation anyway)
+	
+
+## Stream Mode
+
+**Operational Overview:**
+- PC sends ILDA-IDTF data over serial at a high baud rate (skips Comms module?) 
+- Incoming data stored in ring buffer
+- Timer determines periodic output of tail end of ring buffer to DAC
+- When gap between head and tail (i.e. remaining capacity) is greater than serial packet size, arduino indicates ready for another packet and PC sends
+
+**Considerations**
+- Should this be its own class?
+    - has its own state (ring buffer, head and tail - though this might be in the memory management module?)
+	- has its own functions (receive incoming data - possibly direct from Serial skipping comms (comms not necessary for headless stream mode), request more data (CTS or something?) - not used by other modules)
+	- If memory managed by another module, maybe this is just a namespace
+	- But if we're doing this at compile time, what is the point in a memory module that only stores one type of memory once compiled?
+
+## Sprite Mode
+
+**Operational Overview**
+- Buffer stores selection of sprites and their transformations
+- Actual sprite point/vector data stored in progmem
+- Rendering engine stores current sprite (index in buffer, progmem location, current/next point (i.e. vector) - never stores whole sprite)
+- Stores current geometry state - or is this in a seperate geometry engine? That's probably abstracting too far... Yes, that's pretty much the point of the rendering engine, to store geometry!
+- During main loop, geometry calculations fill up a ring buffer
+- Timer requests dac output from ring buffer at intervals
+- Geometry done whilst enough space is in ring buffer
+
+
+###
+
+
+# Layer Details
+
+## Harware Layer
+
+
+### SerialIO
+
+
+
+### EEPROM
+
+
+### DAC
+
+
+### Timer
+
+
+## Core Layer
+
+
+### Communciation
+
+
+### Configuration
+
+
+### RenderEngine
+
+
+
+### Debug
+
+# Considerations
+
+## 1. Timer->DAC?
+- Does the timer tell the rendering engine to output a point to DAC?
+- Or does the timer retrieve the point from the rendering engine and output it to DAC itself?
+- Post-compile, is this actually any different?
+
+## 2. Where is memory stored?
+- Does the rendering engine store the double buffer / ring buffer / sprite buffers?
+- Or is there a seperate module for memory management?
+
+class Renderer:
+
+	double buffer mode:
+		current buffer
+		other buffer
+		
+		current index
+		
+		last point
+		next point
+		
+		distance
+		
+		interpolate?
+			num steps
+			deltas (i.e. steps)
+			
+		accelerate?
+			as interpolate
+		
+		deccelerate?
+		
+		if direct mode:
+			next_point:
+				current position + delta
+				output point to dac
+				output laser to laser
+			meanwhile, processing:
+				if currentstep == interpolation steps:
+					calculate next interpolation parameters
+				
+		if buffer mode:
+			next_point:
+				get from small buffer
+				output point to dac
+				output laser to laser (if necessary)
+				move buffer tail
+			process:
+				if interpolation finished:
+					get next point from big buffer
+					calculate interpolation parameters
+				if space in buffer:
+					calculat next steps
+					
+	serial mode:
+		next_point:
+			if head > tail:
+				output tail
+				tail++
+			else:
+				dwell++
+		process:
+			if head-tail > serial packet size:
+				request next packet
+	
+	sprite mode:
+		sprite buffer
+		sprite state
+		interpolation (etc.) state
+		small point ring buffer
+		
+		if sprite finished:
+			load next sprite into sprite state
+		if point finished:
+			if last point:
+				sprite finished
+			else
+				load next point from sprite state
+				calc interpolation
+		if space in ring buffer:
+			process next step
+		
+	sprite state:
+		sprite location in progmem
+		sprite scale
+		sprite rotate
+		sprite sheer?
+		sprite keystone?
+		
+	interpolation state:
+		start position
+		end position
+		number of steps
+		current step
+		deltas
+	sprite in progmem:
+		number of points
+		list of points
+		laser on/off instructions?
+		
+		
+15 % 16 = 15
+15 & 15 = 0000 1111 & 0000 1111 = 0000 1111
+
+		
+16 % 16 = 0
+16 & 15 = 0001 0000 & 0000 1111 = 0000 0000
+
+17 % 16 = 1
+17 & 15 = 0001 0001 & 0000 1111 = 0000 0001
+		
