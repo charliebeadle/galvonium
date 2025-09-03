@@ -7,21 +7,21 @@
 
 void Renderer::init() {
   DEBUG_INFO("Renderer init");
-  
+
   step_buf.clear();
   interp_clear();
   point_buf_a.clear();
   point_buf_b.clear();
-  
+
   // Critical: ensure buffer pointers are valid
   active_point_buf = &point_buf_a;
   inactive_point_buf = &point_buf_b;
-  
+
   if (active_point_buf == nullptr || inactive_point_buf == nullptr) {
     DEBUG_ERROR("Failed to initialize buffer pointers");
     return;
   }
-  
+
   point_buf_index = 0;
   swap_requested = false;
   step_buf_wait = 0;
@@ -34,8 +34,21 @@ void Renderer::init() {
   next_point = {0, 0};
   next_laser_state = false;
   current_transition = transition_t();
-  
+
   DEBUG_INFO("Renderer init complete");
+
+  // Add some dummy data to the inactive buffer for testing
+  inactive_point_buf->clear();
+  inactive_point_buf->set_coords(0, 128, 128);  // Center point
+  inactive_point_buf->set_laser_state(0, false);
+  inactive_point_buf->set_coords(1, 200, 150);  // Move to another point
+  inactive_point_buf->set_laser_state(1, true);
+  inactive_point_buf->set_coords(2, 100, 200);  // Third point
+  inactive_point_buf->set_laser_state(2, true);
+  inactive_point_buf->point_count = 3;
+
+  // Request a buffer swap to use the dummy data
+  swap_requested = true;
 }
 
 bool Renderer::swap_buffers() {
@@ -99,7 +112,7 @@ void Renderer::handle_next_point() {
 void Renderer::handle_new_transition() {
   this->current_transition = transition_t(this->last_point, this->next_point);
   calc_laser_dwell();
-  
+
   if (interp_init(&current_transition)) {
     this->renderer_state = R_STATE_INTERPOLATE;
   } else {
@@ -124,41 +137,47 @@ void Renderer::calc_laser_dwell() {
   } else {
     this->dwell = 0;
   }
-  
+
   // Validate dwell time is within safe limits
-  VALIDATE_DWELL_TIME(this->dwell);
-  
-  DEBUG_VERBOSE_VAL("Laser dwell calculated: ", this->dwell);
+  if (this->dwell < MIN_DWELL_TIME || this->dwell > MAX_DWELL_TIME) {
+    DEBUG_INFO("CLIP: dwell time out of range");
+    this->dwell =
+        (this->dwell < MIN_DWELL_TIME) ? MIN_DWELL_TIME : MAX_DWELL_TIME;
+  }
+
+  DEBUG_VERBOSE("Laser dwell calculated");
 }
 
 bool Renderer::get_next_point(point_q12_4_t *point, bool *laser_state) {
   // Critical validation - null pointers could crash system
-  VALIDATE_POINTER(point, "point");
-  VALIDATE_POINTER(laser_state, "laser_state");
-  VALIDATE_POINTER(active_point_buf, "active_point_buf");
-  
+  if (point == nullptr || laser_state == nullptr ||
+      active_point_buf == nullptr) {
+    DEBUG_ERROR("get_next_point: null pointer");
+    return false;
+  }
+
   if (active_point_buf->get_point_count() == 0) {
     buffer_status = EMPTY;
     return false;
   }
-  
+
   if (point_buf_index >= active_point_buf->get_point_count()) {
     buffer_status = FINISHED;
     return false;
   }
-  
+
   // Critical: validate buffer index bounds
   if (point_buf_index >= MAX_POINTS) {
     DEBUG_ERROR_VAL("Buffer index out of bounds: ", point_buf_index);
     return false;
   }
-  
+
   point_coord8_t new_point;
   active_point_buf->get_point(point_buf_index, &new_point);
   *point = point_q12_4_t(new_point.x, new_point.y);
   *laser_state = new_point.flags & BLANKING_BIT;
   point_buf_index++;
-  
+
   if (point_buf_index == active_point_buf->get_point_count()) {
     buffer_status = FINISHED;
   } else {
@@ -189,7 +208,8 @@ bool Renderer::process_next_step() {
     } else {
       if (interp_active()) {
         if (interp_next_step()) {
-          if (!step_buf.push(current_transition.current_point, next_laser_state)) {
+          if (!step_buf.push(current_transition.current_point,
+                             next_laser_state)) {
             DEBUG_ERROR("Failed to push interpolation step to buffer");
             return false;
           }
@@ -221,11 +241,12 @@ bool renderer_data_source(void *point, void *laser_state) {
     DEBUG_ISR_ERROR(ISR_ERROR_NULL_POINTER);
     return false;
   }
-  
-  bool result = renderer.get_next_step((point_q12_4_t *)point, (bool *)laser_state);
+
+  bool result =
+      renderer.get_next_step((point_q12_4_t *)point, (bool *)laser_state);
   if (!result) {
     DEBUG_ISR_ERROR(ISR_ERROR_BUFFER_EMPTY);
   }
-  
+
   return result;
 }

@@ -19,13 +19,30 @@ bool interp_clear() {
 bool interp_init(transition_t *transition, uint8_t step_size,
                  uint8_t acc_factor, uint8_t dec_factor) {
   DEBUG_INFO("Interpolation init");
-  
+
   // Validate input parameters - critical for interpolation safety
-  VALIDATE_POINTER(transition, "transition");
-  VALIDATE_STEP_SIZE(step_size);
-  VALIDATE_RANGE_CLIP(acc_factor, MIN_ACC_FACTOR, MAX_ACC_FACTOR);
-  VALIDATE_RANGE_CLIP(dec_factor, MIN_DEC_FACTOR, MAX_DEC_FACTOR);
-  
+  if (transition == nullptr) {
+    DEBUG_ERROR("interp_init: null transition pointer");
+    return false;
+  }
+
+  if (step_size < MIN_STEP_SIZE || step_size > MAX_STEP_SIZE) {
+    DEBUG_INFO("CLIP: step_size out of range");
+    step_size = (step_size < MIN_STEP_SIZE) ? MIN_STEP_SIZE : MAX_STEP_SIZE;
+  }
+
+  if (acc_factor < MIN_ACC_FACTOR || acc_factor > MAX_ACC_FACTOR) {
+    DEBUG_INFO("CLIP: acc_factor out of range");
+    acc_factor =
+        (acc_factor < MIN_ACC_FACTOR) ? MIN_ACC_FACTOR : MAX_ACC_FACTOR;
+  }
+
+  if (dec_factor < MIN_DEC_FACTOR || dec_factor > MAX_DEC_FACTOR) {
+    DEBUG_INFO("CLIP: dec_factor out of range");
+    dec_factor =
+        (dec_factor < MIN_DEC_FACTOR) ? MIN_DEC_FACTOR : MAX_DEC_FACTOR;
+  }
+
   ::transition = transition;
   interp.acc_factor = acc_factor;
   interp.dec_factor = dec_factor;
@@ -79,8 +96,8 @@ bool interp_init(transition_t *transition, uint8_t step_size,
       interp.step.x = 0;
     }
   }
-  
-  DEBUG_VERBOSE_VAL("Total steps: ", interp.total_steps);
+
+  DEBUG_VERBOSE("Interpolation setup complete");
 
   return true;
 }
@@ -90,7 +107,7 @@ bool interp_next_step() {
     DEBUG_ERROR("Interpolation called with null transition");
     return false;
   }
-  
+
   switch (interp.state) {
   case INTERP_STATE_READY:
     interp.state = INTERP_STATE_FIRST;
@@ -143,14 +160,16 @@ remainder = distance & (stepsize - 1);
 */
 void fast_divide_by_power_of_2_uint8(uint8_t *result, uint8_t *remainder,
                                      uint8_t dividend, uint8_t divisor) {
-  VALIDATE_POINTER(result, "result");
-  VALIDATE_POINTER(remainder, "remainder");
-  
+  if (result == nullptr || remainder == nullptr) {
+    DEBUG_ERROR("fast_divide_uint8: null pointer");
+    return;
+  }
+
   if (divisor == 0 || (divisor & (divisor - 1)) != 0) {
     DEBUG_ERROR_VAL("Invalid divisor (not power of 2): ", divisor);
     return;
   }
-  
+
   uint8_t shift_amount = __builtin_ctz(divisor);
   *result = dividend >> shift_amount;
   *remainder = dividend & (divisor - 1);
@@ -158,14 +177,16 @@ void fast_divide_by_power_of_2_uint8(uint8_t *result, uint8_t *remainder,
 
 void fast_divide_by_power_of_2_uint16(uint16_t *result, uint16_t *remainder,
                                       uint16_t dividend, uint16_t divisor) {
-  VALIDATE_POINTER(result, "result");
-  VALIDATE_POINTER(remainder, "remainder");
-  
+  if (result == nullptr || remainder == nullptr) {
+    DEBUG_ERROR("fast_divide_uint16: null pointer");
+    return;
+  }
+
   if (divisor == 0 || (divisor & (divisor - 1)) != 0) {
     DEBUG_ERROR_VAL("Invalid divisor (not power of 2): ", divisor);
     return;
   }
-  
+
   uint8_t shift_amount = __builtin_ctz(divisor);
   *result = dividend >> shift_amount;
   *remainder = dividend & (divisor - 1);

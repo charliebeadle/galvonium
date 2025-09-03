@@ -40,11 +40,11 @@ struct step_ring_buf_16_t {
     if (point == nullptr || flag == nullptr) {
       return false; // Cannot use DEBUG_ERROR in ISR context
     }
-    
+
     if (is_empty()) {
       return false;
     }
-    
+
     *point = point_buf[tail];
     *flag = (flag_buf & (1 << tail)) != 0;
 

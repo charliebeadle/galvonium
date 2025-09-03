@@ -10,6 +10,7 @@ arduino/.clang_complete
 arduino/.gcc-flags.json
 arduino/.cache
 
+
 # Python
 python/__pycache__/
 python/**/__pycache__/
@@ -34,6 +35,8 @@ python/*.log
 *.code-workspace
 # Keep the main workspace file
 !galvonium.code-workspace
+
+.ccls-cache/
 
 # OS Files
 .DS_Store
@@ -72,3 +75,5 @@ python/packages_Galvonium.png
 arduino/src/migration_instructions.md
 arduino/src/new_architecture.md
 >>>>>>> origin/restructure
+
+.ccls-cache/

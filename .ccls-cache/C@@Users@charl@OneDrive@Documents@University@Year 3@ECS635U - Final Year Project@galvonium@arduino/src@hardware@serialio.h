@@ -1,5 +1,6 @@
 #pragma once
 #include "../config.h"
+#include "../debug.h"
 #include <Arduino.h>
 #include <HardwareSerial.h>
 
@@ -18,23 +19,35 @@ private:
 };
 
 void SerialIO::init() {
-  baud_rate = 9600;
+  baud_rate = DEFAULT_BAUD_RATE;
+  if (baud_rate < MIN_BAUD_RATE || baud_rate > MAX_BAUD_RATE) {
+    DEBUG_INFO("CLIP: baud_rate out of range");
+    baud_rate = (baud_rate < MIN_BAUD_RATE) ? MIN_BAUD_RATE : MAX_BAUD_RATE;
+  }
   Serial.begin(baud_rate);
-  DEBUG_INFO(F("Serial IO initialized"));
-  DEBUG_INFO(F("Baud rate: %d"), baud_rate);
+  DEBUG_INFO("Serial ready");
   Serial.println(F("Galvonium ready."));
 }
 
 void SerialIO::init(uint32_t baud) {
-  Serial.begin(baud);
-  DEBUG_INFO(F("Serial IO initialized"));
-  DEBUG_INFO(F("Baud rate: %d"), baud);
+  if (baud < MIN_BAUD_RATE || baud > MAX_BAUD_RATE) {
+    DEBUG_INFO("CLIP: baud out of range");
+    baud = (baud < MIN_BAUD_RATE) ? MIN_BAUD_RATE : MAX_BAUD_RATE;
+  }
+  baud_rate = baud;
+  Serial.begin(baud_rate);
+  DEBUG_INFO("Serial IO initialized with custom baud rate");
   Serial.println(F("Galvonium ready."));
 }
 
 bool SerialIO::available() { return Serial.available(); }
 
-char SerialIO::read() { return Serial.read(); }
+char SerialIO::read() {
+  if (!available()) {
+    DEBUG_VERBOSE("Serial read called with no data available");
+  }
+  return Serial.read();
+}
 
 void SerialIO::write(char c) { Serial.write(c); }
 

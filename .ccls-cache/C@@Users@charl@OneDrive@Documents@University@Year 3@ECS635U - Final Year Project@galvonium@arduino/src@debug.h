@@ -97,23 +97,47 @@
 #define DEBUG_LEVEL_INFO 2
 #define DEBUG_LEVEL_VERBOSE 3
 
-// Original debug macros from config.h
+// Enhanced debug macros with file and function context
 #if DEBUG_LEVEL >= 1
-#define DEBUG_ERROR(x, ...) Serial.println(x)
+#define DEBUG_ERROR(msg)                                                       \
+  do {                                                                         \
+    Serial.print(F("[ERROR] "));                                               \
+    Serial.print(__FILE__);                                                    \
+    Serial.print(F(":"));                                                      \
+    Serial.print(__func__);                                                    \
+    Serial.print(F(" - "));                                                    \
+    Serial.println(F(msg));                                                    \
+  } while (0)
 #else
-#define DEBUG_ERROR(x, ...)
+#define DEBUG_ERROR(msg)
 #endif
 
 #if DEBUG_LEVEL >= 2
-#define DEBUG_INFO(x, ...) Serial.println(x)
+#define DEBUG_INFO(msg)                                                        \
+  do {                                                                         \
+    Serial.print(F("[INFO] "));                                                \
+    Serial.print(__FILE__);                                                    \
+    Serial.print(F(":"));                                                      \
+    Serial.print(__func__);                                                    \
+    Serial.print(F(" - "));                                                    \
+    Serial.println(F(msg));                                                    \
+  } while (0)
 #else
-#define DEBUG_INFO(x, ...)
+#define DEBUG_INFO(msg)
 #endif
 
 #if DEBUG_LEVEL >= 3
-#define DEBUG_VERBOSE(x, ...) Serial.println(x)
+#define DEBUG_VERBOSE(msg)                                                     \
+  do {                                                                         \
+    Serial.print(F("[VERBOSE] "));                                             \
+    Serial.print(__FILE__);                                                    \
+    Serial.print(F(":"));                                                      \
+    Serial.print(__func__);                                                    \
+    Serial.print(F(" - "));                                                    \
+    Serial.println(F(msg));                                                    \
+  } while (0)
 #else
-#define DEBUG_VERBOSE(x, ...)
+#define DEBUG_VERBOSE(msg)
 #endif
 
 #if ENABLE_DEBUG_PINS
@@ -134,13 +158,27 @@
 
 #if DEBUG_LEVEL >= DEBUG_LEVEL_ERROR
 #define DEBUG_ERROR_VAL(x, val)                                                \
-  Serial.print(F(x));                                                          \
-  Serial.println(val)
+  do {                                                                         \
+    Serial.print(F("[ERROR] "));                                               \
+    Serial.print(__FILE__);                                                    \
+    Serial.print(F(":"));                                                      \
+    Serial.print(__func__);                                                    \
+    Serial.print(F(" - "));                                                    \
+    Serial.print(F(x));                                                        \
+    Serial.println(val);                                                       \
+  } while (0)
 #define DEBUG_ERROR_VAL2(x, val1, val2)                                        \
-  Serial.print(F(x));                                                          \
-  Serial.print(val1);                                                          \
-  Serial.print(F(" "));                                                        \
-  Serial.println(val2)
+  do {                                                                         \
+    Serial.print(F("[ERROR] "));                                               \
+    Serial.print(__FILE__);                                                    \
+    Serial.print(F(":"));                                                      \
+    Serial.print(__func__);                                                    \
+    Serial.print(F(" - "));                                                    \
+    Serial.print(F(x));                                                        \
+    Serial.print(val1);                                                        \
+    Serial.print(F(" "));                                                      \
+    Serial.println(val2);                                                      \
+  } while (0)
 #else
 #define DEBUG_ERROR_VAL(x, val)
 #define DEBUG_ERROR_VAL2(x, val1, val2)
@@ -148,13 +186,27 @@
 
 #if DEBUG_LEVEL >= DEBUG_LEVEL_INFO
 #define DEBUG_INFO_VAL(x, val)                                                 \
-  Serial.print(F(x));                                                          \
-  Serial.println(val)
+  do {                                                                         \
+    Serial.print(F("[INFO] "));                                                \
+    Serial.print(F(__FILE__));                                                 \
+    Serial.print(F(":"));                                                      \
+    Serial.print(F(__func__));                                                 \
+    Serial.print(F(" - "));                                                    \
+    Serial.print(F(x));                                                        \
+    Serial.println(val);                                                       \
+  } while (0)
 #define DEBUG_INFO_VAL2(x, val1, val2)                                         \
-  Serial.print(F(x));                                                          \
-  Serial.print(val1);                                                          \
-  Serial.print(F(" "));                                                        \
-  Serial.println(val2)
+  do {                                                                         \
+    Serial.print(F("[INFO] "));                                                \
+    Serial.print(F(__FILE__));                                                 \
+    Serial.print(F(":"));                                                      \
+    Serial.print(F(__func__));                                                 \
+    Serial.print(F(" - "));                                                    \
+    Serial.print(F(x));                                                        \
+    Serial.print(val1);                                                        \
+    Serial.print(F(" "));                                                      \
+    Serial.println(val2);                                                      \
+  } while (0)
 #else
 #define DEBUG_INFO_VAL(x, val)
 #define DEBUG_INFO_VAL2(x, val1, val2)
@@ -162,13 +214,27 @@
 
 #if DEBUG_LEVEL >= DEBUG_LEVEL_VERBOSE
 #define DEBUG_VERBOSE_VAL(x, val)                                              \
-  Serial.print(F(x));                                                          \
-  Serial.println(val)
+  do {                                                                         \
+    Serial.print(F("[VERBOSE] "));                                             \
+    Serial.print(__FILE__);                                                    \
+    Serial.print(F(":"));                                                      \
+    Serial.print(__func__);                                                    \
+    Serial.print(F(" - "));                                                    \
+    Serial.print(F(x));                                                        \
+    Serial.println(val);                                                       \
+  } while (0)
 #define DEBUG_VERBOSE_VAL2(x, val1, val2)                                      \
-  Serial.print(F(x));                                                          \
-  Serial.print(val1);                                                          \
-  Serial.print(F(" "));                                                        \
-  Serial.println(val2)
+  do {                                                                         \
+    Serial.print(F("[VERBOSE] "));                                             \
+    Serial.print(__FILE__);                                                    \
+    Serial.print(F(":"));                                                      \
+    Serial.print(__func__);                                                    \
+    Serial.print(F(" - "));                                                    \
+    Serial.print(F(x));                                                        \
+    Serial.print(val1);                                                        \
+    Serial.print(F(" "));                                                      \
+    Serial.println(val2);                                                      \
+  } while (0)
 #else
 #define DEBUG_VERBOSE_VAL(x, val)
 #define DEBUG_VERBOSE_VAL2(x, val1, val2)
@@ -254,7 +320,12 @@
   } while (0)
 
 // Step size validation
-#define VALIDATE_STEP_SIZE(step_size) VALIDATE_RANGE_CLIP(step_size, 1, 50)
+#define VALIDATE_STEP_SIZE(step_size)                                          \
+  VALIDATE_RANGE_CLIP(step_size, MIN_STEP_SIZE, MAX_STEP_SIZE)
+
+// Dwell time validation
+#define VALIDATE_DWELL_TIME(dwell)                                             \
+  VALIDATE_RANGE_CLIP(dwell, MIN_DWELL_TIME, MAX_DWELL_TIME)
 
 // Interpolation factor validation (0-7 for bit shifts)
 #define VALIDATE_INTERP_FACTOR(factor) VALIDATE_RANGE_CLIP(factor, 0, 7)
@@ -297,6 +368,46 @@ inline int freeMemory() {
   char top;
   return &top - reinterpret_cast<char *>(sbrk(0));
 }
+#endif
+
+// ISR error flag system - no Serial calls in ISR
+#if DEBUG_LEVEL >= DEBUG_LEVEL_ERROR
+extern volatile bool isr_error_flag;
+extern volatile uint8_t isr_error_code;
+#define ISR_ERROR_NULL_POINTER 1
+#define ISR_ERROR_INVALID_DATA 2
+#define ISR_ERROR_BUFFER_EMPTY 3
+
+#define DEBUG_ISR_ERROR(code)                                                  \
+  do {                                                                         \
+    isr_error_flag = true;                                                     \
+    isr_error_code = (code);                                                   \
+  } while (0)
+
+#define CHECK_ISR_ERRORS()                                                     \
+  do {                                                                         \
+    if (isr_error_flag) {                                                      \
+      switch (isr_error_code) {                                                \
+      case ISR_ERROR_NULL_POINTER:                                             \
+        DEBUG_ERROR("ISR encountered null pointer");                           \
+        break;                                                                 \
+      case ISR_ERROR_INVALID_DATA:                                             \
+        DEBUG_ERROR("ISR encountered invalid data");                           \
+        break;                                                                 \
+      case ISR_ERROR_BUFFER_EMPTY:                                             \
+        DEBUG_ERROR("ISR encountered empty buffer");                           \
+        break;                                                                 \
+      default:                                                                 \
+        DEBUG_ERROR_VAL("ISR unknown error code: ", isr_error_code);           \
+        break;                                                                 \
+      }                                                                        \
+      isr_error_flag = false;                                                  \
+      isr_error_code = 0;                                                      \
+    }                                                                          \
+  } while (0)
+#else
+#define DEBUG_ISR_ERROR(code)
+#define CHECK_ISR_ERRORS()
 #endif
 
 // ISR-safe debug macros (minimal, no Serial calls in ISR)

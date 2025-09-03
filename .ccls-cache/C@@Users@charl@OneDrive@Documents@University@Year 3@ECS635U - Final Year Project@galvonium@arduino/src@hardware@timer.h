@@ -1,5 +1,6 @@
 #pragma once
 #include "../config.h"
+#include "../debug.h"
 #include "../types.h"
 #include <Arduino.h>
 
@@ -56,6 +57,8 @@ Timer::Timer() {
 }
 
 void Timer::init() {
+  DEBUG_INFO("Timer init");
+
   cli();
 
   // Clear Timer/Counter Control Registers
@@ -69,35 +72,42 @@ void Timer::init() {
   TCCR1B |= (1 << CS10);
 
   setFrequency(frequency);
-
   enable();
 
   sei();
 
-  DEBUG_INFO(F("Timer initialized"));
+  DEBUG_INFO("Timer ready");
 }
 
 void Timer::setFrequency(uint32_t frequency) {
   if (frequency < MIN_PPS || frequency > MAX_PPS) {
-    DEBUG_ERROR(F("Invalid frequency: %d"), frequency);
+    DEBUG_ERROR_VAL2("Invalid timer frequency: ", frequency, " Range: ");
+    DEBUG_ERROR_VAL2("", MIN_PPS, "-");
+    DEBUG_ERROR_VAL("", MAX_PPS);
+    return;
+  }
+
+  uint32_t ocr_value = (CLOCK_FREQ / frequency) - 1;
+  if (ocr_value > 65535) {
+    DEBUG_ERROR_VAL("Timer OCR overflow: ", ocr_value);
     return;
   }
 
   this->frequency = frequency;
-  OCR1A = (CLOCK_FREQ / frequency) - 1;
-  DEBUG_INFO(F("Timer frequency set to %d"), frequency);
+  OCR1A = ocr_value;
+  DEBUG_INFO("Timer frequency set");
 }
 
 void Timer::enable() {
   TIMSK1 |= (1 << OCIE1A);
   enabled = true;
-  DEBUG_INFO(F("Timer enabled"));
+  DEBUG_INFO("Timer enabled");
 }
 
 void Timer::disable() {
   TIMSK1 &= ~(1 << OCIE1A);
   enabled = false;
-  DEBUG_INFO(F("Timer disabled"));
+  DEBUG_INFO("Timer disabled");
 }
 
 uint32_t Timer::getFrequency() const { return frequency; }
@@ -107,15 +117,25 @@ void Timer::setCallback(timer_callback_t callback) {
 }
 
 void Timer::setDataSource(data_source_callback_t data_source) {
+  if (data_source == nullptr) {
+    DEBUG_ERROR("Timer setDataSource: null function pointer");
+    return;
+  }
   this->data_source = data_source;
+  DEBUG_INFO("Timer data source set");
 }
 
 void Timer::setHardwareOutput(hardware_output_callback_t hardware_output) {
+  if (hardware_output == nullptr) {
+    DEBUG_ERROR("Timer setHardwareOutput: null function pointer");
+    return;
+  }
   this->hardware_output = hardware_output;
+  DEBUG_INFO("Timer hardware output set");
 }
 
 ISR(TIMER1_COMPA_vect) {
-  DEBUG_ISR_PIN_ON();
+  DEBUG_ISR_START();
 
   if (g_timer_instance && g_timer_instance->getDataSource() &&
       g_timer_instance->getHardwareOutput()) {
@@ -126,8 +146,12 @@ ISR(TIMER1_COMPA_vect) {
     if (g_timer_instance->getDataSource()(&point, &laser_state)) {
       // Output the data using the hardware output callback
       g_timer_instance->getHardwareOutput()(&point, &laser_state);
+    } else {
+      DEBUG_ISR_ERROR(ISR_ERROR_BUFFER_EMPTY);
     }
+  } else {
+    DEBUG_ISR_ERROR(ISR_ERROR_NULL_POINTER);
   }
 
-  DEBUG_ISR_PIN_OFF();
+  DEBUG_ISR_END();
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include "../config.h"
+#include "../debug.h"
 #include "../types.h"
 #include <Arduino.h>
 
@@ -57,7 +58,7 @@ Timer::Timer() {
 
 void Timer::init() {
   DEBUG_INFO("Timer init");
-  
+
   cli();
 
   // Clear Timer/Counter Control Registers
@@ -91,10 +92,10 @@ void Timer::setFrequency(uint32_t frequency) {
     DEBUG_ERROR_VAL("Timer OCR overflow: ", ocr_value);
     return;
   }
-  
+
   this->frequency = frequency;
   OCR1A = ocr_value;
-  DEBUG_INFO_VAL("Timer frequency: ", frequency);
+  DEBUG_INFO("Timer frequency set");
 }
 
 void Timer::enable() {
@@ -116,13 +117,19 @@ void Timer::setCallback(timer_callback_t callback) {
 }
 
 void Timer::setDataSource(data_source_callback_t data_source) {
-  VALIDATE_POINTER(data_source, "data_source");
+  if (data_source == nullptr) {
+    DEBUG_ERROR("Timer setDataSource: null function pointer");
+    return;
+  }
   this->data_source = data_source;
   DEBUG_INFO("Timer data source set");
 }
 
 void Timer::setHardwareOutput(hardware_output_callback_t hardware_output) {
-  VALIDATE_POINTER(hardware_output, "hardware_output");
+  if (hardware_output == nullptr) {
+    DEBUG_ERROR("Timer setHardwareOutput: null function pointer");
+    return;
+  }
   this->hardware_output = hardware_output;
   DEBUG_INFO("Timer hardware output set");
 }

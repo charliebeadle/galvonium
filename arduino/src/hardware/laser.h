@@ -15,7 +15,7 @@ public:
     DEBUG_INFO("Laser init");
     pinMode(LASER_PIN, OUTPUT);
     digitalWrite(LASER_PIN, LOW);
-    DEBUG_INFO_VAL("Laser ready on pin: ", LASER_PIN);
+    DEBUG_INFO("Laser ready");
   }
 
   void set_laser(bool enable) {
