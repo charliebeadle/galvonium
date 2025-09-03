@@ -22,8 +22,7 @@ void SerialIO::init() {
   baud_rate = DEFAULT_BAUD_RATE;
   VALIDATE_RANGE_CLIP(baud_rate, MIN_BAUD_RATE, MAX_BAUD_RATE);
   Serial.begin(baud_rate);
-  DEBUG_INFO("Serial IO initialized");
-  DEBUG_INFO_VAL("Baud rate: ", baud_rate);
+  DEBUG_INFO_VAL("Serial ready, baud: ", baud_rate);
   Serial.println(F("Galvonium ready."));
 }
 
@@ -40,7 +39,7 @@ bool SerialIO::available() { return Serial.available(); }
 
 char SerialIO::read() { 
   if (!available()) {
-    DEBUG_VERBOSE("SerialIO::read called with no data available");
+    DEBUG_VERBOSE("Serial read called with no data available");
   }
   return Serial.read(); 
 }

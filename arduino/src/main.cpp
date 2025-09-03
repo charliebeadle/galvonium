@@ -6,20 +6,16 @@
 #include <SPI.h>
 
 void setup() {
-  DEBUG_INFO("System startup beginning");
+  DEBUG_INFO("System startup");
   
-  DEBUG_INFO("Initializing hardware subsystem");
   Hardware::init();
-  
-  DEBUG_INFO("Initializing renderer subsystem");
   renderer.init();
-  
-  DEBUG_INFO("Setting up data source bridge");
   Hardware::setDataSource((void *)renderer_data_source);
   
-  DEBUG_INFO("System startup complete - entering main loop");
+  DEBUG_INFO("System ready");
 }
 
 void loop() { 
+  CHECK_ISR_ERRORS(); // Check for any ISR errors and report them
   renderer.process(); 
 }

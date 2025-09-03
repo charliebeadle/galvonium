@@ -7,7 +7,6 @@ interpolation_t interp;
 transition_t *transition;
 
 bool interp_clear() {
-  DEBUG_VERBOSE("Interpolation clear");
   transition = nullptr;
   interp.acc_factor = 0;
   interp.dec_factor = 0;
@@ -19,17 +18,13 @@ bool interp_clear() {
 }
 bool interp_init(transition_t *transition, uint8_t step_size,
                  uint8_t acc_factor, uint8_t dec_factor) {
-  DEBUG_VERBOSE("Interpolation init starting");
+  DEBUG_INFO("Interpolation init");
   
-  // Validate input parameters
+  // Validate input parameters - critical for interpolation safety
   VALIDATE_POINTER(transition, "transition");
   VALIDATE_STEP_SIZE(step_size);
   VALIDATE_RANGE_CLIP(acc_factor, MIN_ACC_FACTOR, MAX_ACC_FACTOR);
   VALIDATE_RANGE_CLIP(dec_factor, MIN_DEC_FACTOR, MAX_DEC_FACTOR);
-  
-  DEBUG_VERBOSE_VAL2("Step size: ", step_size, " Acc factor: ");
-  DEBUG_VERBOSE_VAL2("", acc_factor, " Dec factor: ");
-  DEBUG_VERBOSE_VAL("", dec_factor);
   
   ::transition = transition;
   interp.acc_factor = acc_factor;
@@ -41,21 +36,15 @@ bool interp_init(transition_t *transition, uint8_t step_size,
   int16_t delta_x = transition->end_point.x - transition->start_point.x;
   int16_t delta_y = transition->end_point.y - transition->start_point.y;
   uint16_t max_distance = MAX(ABS(delta_x), ABS(delta_y));
-  
-  DEBUG_VERBOSE_VAL2("Transition delta - X: ", delta_x, " Y: ");
-  DEBUG_VERBOSE_VAL("", delta_y);
-  DEBUG_VERBOSE_VAL("Max distance: ", max_distance);
 
   if ((int16_t)max_distance < COORD8_TO_Q12_4(step_size)) {
     // neither distance is larger than the step size
-    DEBUG_VERBOSE("Short transition - single step mode");
     interp.total_steps = 1;
     interp.step = transition->end_point - transition->start_point;
     interp.acc_factor = 0;
     interp.dec_factor = 0;
     interp.state = INTERP_STATE_LAST;
   } else if (ABS(delta_x) == ABS(delta_y)) {
-    DEBUG_VERBOSE("Diagonal transition - equal axis mode");
     interp.step.x = COORD8_TO_Q12_4(step_size);
     interp.step.y = COORD8_TO_Q12_4(step_size);
     if (interp.step.x == 0) {
@@ -65,7 +54,6 @@ bool interp_init(transition_t *transition, uint8_t step_size,
     interp.total_steps = delta_x / interp.step.x;
   } else if (ABS(delta_x) > ABS(delta_y)) {
     // X is the longer axis
-    DEBUG_VERBOSE("X-axis dominant transition");
     interp.step.x = COORD8_TO_Q12_4(step_size);
     if (interp.step.x == 0) {
       DEBUG_ERROR("Division by zero in X-dominant interpolation");
@@ -79,7 +67,6 @@ bool interp_init(transition_t *transition, uint8_t step_size,
     }
   } else {
     // Y is the longer axis
-    DEBUG_VERBOSE("Y-axis dominant transition");
     interp.step.y = COORD8_TO_Q12_4(step_size);
     if (interp.step.y == 0) {
       DEBUG_ERROR("Division by zero in Y-dominant interpolation");
@@ -93,9 +80,7 @@ bool interp_init(transition_t *transition, uint8_t step_size,
     }
   }
   
-  DEBUG_VERBOSE_VAL("Total steps calculated: ", interp.total_steps);
-  DEBUG_VERBOSE_VAL2("Step vector - X: ", interp.step.x, " Y: ");
-  DEBUG_VERBOSE_VAL("", interp.step.y);
+  DEBUG_VERBOSE_VAL("Total steps: ", interp.total_steps);
 
   return true;
 }
@@ -108,7 +93,6 @@ bool interp_next_step() {
   
   switch (interp.state) {
   case INTERP_STATE_READY:
-    DEBUG_VERBOSE("Interpolation state: READY -> FIRST");
     interp.state = INTERP_STATE_FIRST;
   case INTERP_STATE_FIRST:
     if (interp.acc_factor > 0) {
@@ -142,7 +126,6 @@ bool interp_next_step() {
       return true;
     }
   case INTERP_STATE_FINISHED:
-    DEBUG_VERBOSE("Interpolation finished");
     return false;
   default:
     DEBUG_ERROR_VAL("Unknown interpolation state: ", interp.state);

@@ -12,14 +12,13 @@ public:
   }
 
   void init() {
-    DEBUG_INFO("Laser initialization starting");
+    DEBUG_INFO("Laser init");
     pinMode(LASER_PIN, OUTPUT);
     digitalWrite(LASER_PIN, LOW);
-    DEBUG_INFO_VAL("Laser initialized on pin: ", LASER_PIN);
+    DEBUG_INFO_VAL("Laser ready on pin: ", LASER_PIN);
   }
 
   void set_laser(bool enable) {
-    DEBUG_VERBOSE_VAL("Laser state change: ", enable ? "ON" : "OFF");
     if (enable) {
       digitalWrite(LASER_PIN, HIGH);
     } else {

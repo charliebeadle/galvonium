@@ -134,6 +134,10 @@
 // Memory limits
 #define MAX_MEMORY_USAGE 2048 // Maximum expected memory usage (bytes)
 #define MIN_FREE_MEMORY 100   // Minimum free memory threshold (bytes)
+#define EEPROM_SIZE 1024      // Arduino Uno EEPROM size (bytes)
+
+// Step buffer limits
+#define MAX_STEP_BUFFER_WAIT 100 // Maximum wait cycles before timeout
 
 // ============================================================================
 // LEGACY COMPATIBILITY

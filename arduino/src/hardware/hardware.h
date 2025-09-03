@@ -61,27 +61,19 @@ inline Laser &laser() { return context.laser; }
 
 // HardwareContext method implementations
 void HardwareContext::init() {
-  DEBUG_INFO("Hardware context initialization starting");
+  DEBUG_INFO("Hardware init");
   
-  DEBUG_INFO("Initializing serial communication");
   serial.init(DEFAULT_BAUD_RATE);
-  
-  DEBUG_INFO("Initializing DAC");
   dac.init();
-  
-  DEBUG_INFO("Initializing timer");
   timer.init();
-  
-  DEBUG_INFO("Initializing laser");
   laser.init();
   
-  DEBUG_INFO("Setting up hardware output callback for timer");
   // Set up hardware output callback for timer
   timer.setHardwareOutput([](void *point, void *laser_state) {
     context.hardware_output(point, laser_state);
   });
   
-  DEBUG_INFO("Hardware context initialization complete");
+  DEBUG_INFO("Hardware ready");
 }
 
 void HardwareContext::shutdown() {
@@ -93,14 +85,16 @@ void HardwareContext::shutdown() {
 
 void HardwareContext::setDataSource(void *data_source_func) {
   VALIDATE_POINTER(data_source_func, "data_source_func");
-  DEBUG_INFO("Setting hardware data source");
+  DEBUG_INFO("Data source set");
   timer.setDataSource((data_source_callback_t)data_source_func);
 }
 
 void HardwareContext::hardware_output(void *point, void *laser_state) {
-  // NOTE: This is called from ISR - keep debug messages minimal
-  VALIDATE_POINTER(point, "point");
-  VALIDATE_POINTER(laser_state, "laser_state");
+  // NOTE: This is called from ISR - no Serial debug, use ISR error flags
+  if (point == nullptr || laser_state == nullptr) {
+    DEBUG_ISR_ERROR(ISR_ERROR_NULL_POINTER);
+    return;
+  }
   
   dac.output_point((point_q12_4_t *)point);
   laser.set_laser(*(bool *)laser_state);
