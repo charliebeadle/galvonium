@@ -97,23 +97,47 @@
 #define DEBUG_LEVEL_INFO 2
 #define DEBUG_LEVEL_VERBOSE 3
 
-// Original debug macros from config.h
+// Enhanced debug macros with file and function context
 #if DEBUG_LEVEL >= 1
-#define DEBUG_ERROR(x, ...) Serial.println(x)
+#define DEBUG_ERROR(x) \
+  do { \
+    Serial.print(F("[ERROR] ")); \
+    Serial.print(F(__FILE__)); \
+    Serial.print(F(":")); \
+    Serial.print(F(__func__)); \
+    Serial.print(F(" - ")); \
+    Serial.println(F(x)); \
+  } while(0)
 #else
-#define DEBUG_ERROR(x, ...)
+#define DEBUG_ERROR(x)
 #endif
 
 #if DEBUG_LEVEL >= 2
-#define DEBUG_INFO(x, ...) Serial.println(x)
+#define DEBUG_INFO(x) \
+  do { \
+    Serial.print(F("[INFO] ")); \
+    Serial.print(F(__FILE__)); \
+    Serial.print(F(":")); \
+    Serial.print(F(__func__)); \
+    Serial.print(F(" - ")); \
+    Serial.println(F(x)); \
+  } while(0)
 #else
-#define DEBUG_INFO(x, ...)
+#define DEBUG_INFO(x)
 #endif
 
 #if DEBUG_LEVEL >= 3
-#define DEBUG_VERBOSE(x, ...) Serial.println(x)
+#define DEBUG_VERBOSE(x) \
+  do { \
+    Serial.print(F("[VERBOSE] ")); \
+    Serial.print(F(__FILE__)); \
+    Serial.print(F(":")); \
+    Serial.print(F(__func__)); \
+    Serial.print(F(" - ")); \
+    Serial.println(F(x)); \
+  } while(0)
 #else
-#define DEBUG_VERBOSE(x, ...)
+#define DEBUG_VERBOSE(x)
 #endif
 
 #if ENABLE_DEBUG_PINS
@@ -133,42 +157,84 @@
 // config.h
 
 #if DEBUG_LEVEL >= DEBUG_LEVEL_ERROR
-#define DEBUG_ERROR_VAL(x, val)                                                \
-  Serial.print(F(x));                                                          \
-  Serial.println(val)
-#define DEBUG_ERROR_VAL2(x, val1, val2)                                        \
-  Serial.print(F(x));                                                          \
-  Serial.print(val1);                                                          \
-  Serial.print(F(" "));                                                        \
-  Serial.println(val2)
+#define DEBUG_ERROR_VAL(x, val) \
+  do { \
+    Serial.print(F("[ERROR] ")); \
+    Serial.print(F(__FILE__)); \
+    Serial.print(F(":")); \
+    Serial.print(F(__func__)); \
+    Serial.print(F(" - ")); \
+    Serial.print(F(x)); \
+    Serial.println(val); \
+  } while(0)
+#define DEBUG_ERROR_VAL2(x, val1, val2) \
+  do { \
+    Serial.print(F("[ERROR] ")); \
+    Serial.print(F(__FILE__)); \
+    Serial.print(F(":")); \
+    Serial.print(F(__func__)); \
+    Serial.print(F(" - ")); \
+    Serial.print(F(x)); \
+    Serial.print(val1); \
+    Serial.print(F(" ")); \
+    Serial.println(val2); \
+  } while(0)
 #else
 #define DEBUG_ERROR_VAL(x, val)
 #define DEBUG_ERROR_VAL2(x, val1, val2)
 #endif
 
 #if DEBUG_LEVEL >= DEBUG_LEVEL_INFO
-#define DEBUG_INFO_VAL(x, val)                                                 \
-  Serial.print(F(x));                                                          \
-  Serial.println(val)
-#define DEBUG_INFO_VAL2(x, val1, val2)                                         \
-  Serial.print(F(x));                                                          \
-  Serial.print(val1);                                                          \
-  Serial.print(F(" "));                                                        \
-  Serial.println(val2)
+#define DEBUG_INFO_VAL(x, val) \
+  do { \
+    Serial.print(F("[INFO] ")); \
+    Serial.print(F(__FILE__)); \
+    Serial.print(F(":")); \
+    Serial.print(F(__func__)); \
+    Serial.print(F(" - ")); \
+    Serial.print(F(x)); \
+    Serial.println(val); \
+  } while(0)
+#define DEBUG_INFO_VAL2(x, val1, val2) \
+  do { \
+    Serial.print(F("[INFO] ")); \
+    Serial.print(F(__FILE__)); \
+    Serial.print(F(":")); \
+    Serial.print(F(__func__)); \
+    Serial.print(F(" - ")); \
+    Serial.print(F(x)); \
+    Serial.print(val1); \
+    Serial.print(F(" ")); \
+    Serial.println(val2); \
+  } while(0)
 #else
 #define DEBUG_INFO_VAL(x, val)
 #define DEBUG_INFO_VAL2(x, val1, val2)
 #endif
 
 #if DEBUG_LEVEL >= DEBUG_LEVEL_VERBOSE
-#define DEBUG_VERBOSE_VAL(x, val)                                              \
-  Serial.print(F(x));                                                          \
-  Serial.println(val)
-#define DEBUG_VERBOSE_VAL2(x, val1, val2)                                      \
-  Serial.print(F(x));                                                          \
-  Serial.print(val1);                                                          \
-  Serial.print(F(" "));                                                        \
-  Serial.println(val2)
+#define DEBUG_VERBOSE_VAL(x, val) \
+  do { \
+    Serial.print(F("[VERBOSE] ")); \
+    Serial.print(F(__FILE__)); \
+    Serial.print(F(":")); \
+    Serial.print(F(__func__)); \
+    Serial.print(F(" - ")); \
+    Serial.print(F(x)); \
+    Serial.println(val); \
+  } while(0)
+#define DEBUG_VERBOSE_VAL2(x, val1, val2) \
+  do { \
+    Serial.print(F("[VERBOSE] ")); \
+    Serial.print(F(__FILE__)); \
+    Serial.print(F(":")); \
+    Serial.print(F(__func__)); \
+    Serial.print(F(" - ")); \
+    Serial.print(F(x)); \
+    Serial.print(val1); \
+    Serial.print(F(" ")); \
+    Serial.println(val2); \
+  } while(0)
 #else
 #define DEBUG_VERBOSE_VAL(x, val)
 #define DEBUG_VERBOSE_VAL2(x, val1, val2)

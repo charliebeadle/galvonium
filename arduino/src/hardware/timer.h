@@ -56,6 +56,8 @@ Timer::Timer() {
 }
 
 void Timer::init() {
+  DEBUG_INFO("Timer initialization starting");
+  
   cli();
 
   // Clear Timer/Counter Control Registers
@@ -68,24 +70,37 @@ void Timer::init() {
   // No prescaling for higher precision
   TCCR1B |= (1 << CS10);
 
+  DEBUG_VERBOSE_VAL("Setting default frequency: ", frequency);
   setFrequency(frequency);
 
   enable();
 
   sei();
 
-  DEBUG_INFO(F("Timer initialized"));
+  DEBUG_INFO("Timer initialization complete");
 }
 
 void Timer::setFrequency(uint32_t frequency) {
+  DEBUG_VERBOSE_VAL("setFrequency called with: ", frequency);
+  
   if (frequency < MIN_PPS || frequency > MAX_PPS) {
-    DEBUG_ERROR(F("Invalid frequency: %d"), frequency);
+    DEBUG_ERROR_VAL2("Invalid frequency out of range: ", frequency, " Valid range: ");
+    DEBUG_ERROR_VAL2("Min: ", MIN_PPS, " Max: ");
+    DEBUG_ERROR_VAL("", MAX_PPS);
     return;
   }
 
   this->frequency = frequency;
-  OCR1A = (CLOCK_FREQ / frequency) - 1;
-  DEBUG_INFO(F("Timer frequency set to %d"), frequency);
+  uint32_t ocr_value = (CLOCK_FREQ / frequency) - 1;
+  
+  if (ocr_value > 65535) {
+    DEBUG_ERROR_VAL("OCR value overflow: ", ocr_value);
+    return;
+  }
+  
+  OCR1A = ocr_value;
+  DEBUG_INFO_VAL("Timer frequency set to: ", frequency);
+  DEBUG_VERBOSE_VAL("OCR1A value: ", ocr_value);
 }
 
 void Timer::enable() {
@@ -107,11 +122,15 @@ void Timer::setCallback(timer_callback_t callback) {
 }
 
 void Timer::setDataSource(data_source_callback_t data_source) {
+  VALIDATE_POINTER(data_source, "data_source");
   this->data_source = data_source;
+  DEBUG_INFO("Timer data source configured");
 }
 
 void Timer::setHardwareOutput(hardware_output_callback_t hardware_output) {
+  VALIDATE_POINTER(hardware_output, "hardware_output");
   this->hardware_output = hardware_output;
+  DEBUG_INFO("Timer hardware output configured");
 }
 
 ISR(TIMER1_COMPA_vect) {
