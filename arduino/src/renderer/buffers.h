@@ -36,9 +36,15 @@ struct step_ring_buf_16_t {
   // Pop the next step from the buffer
   // Returns false if the buffer is empty
   inline bool pop(point_q12_4_t *point, bool *flag) {
+    // Critical validation for ISR-called function
+    if (point == nullptr || flag == nullptr) {
+      return false; // Cannot use DEBUG_ERROR in ISR context
+    }
+    
     if (is_empty()) {
       return false;
     }
+    
     *point = point_buf[tail];
     *flag = (flag_buf & (1 << tail)) != 0;
 
@@ -82,15 +88,13 @@ struct coord8_point_buf_t {
   uint8_t point_count;
 
   inline void clear() {
-    DEBUG_VERBOSE("coord8_point_buf_t::clear");
     memset(points, 0, MAX_POINTS);
-
     point_count = 0;
   }
 
   void set_laser_state(uint8_t index, bool state) {
     if (index >= MAX_POINTS) {
-      DEBUG_ERROR("coord8_point_buf_t::set_laser_state: Index out of range");
+      DEBUG_ERROR_VAL("Buffer laser state index out of range: ", index);
       return;
     }
     this->points[index].flags = state ? BLANKING_BIT : 0;
@@ -98,7 +102,7 @@ struct coord8_point_buf_t {
 
   bool get_laser_state(uint8_t index) {
     if (index >= MAX_POINTS) {
-      DEBUG_ERROR("coord8_point_buf_t::get_laser_state: Index out of range");
+      DEBUG_ERROR_VAL("Buffer get laser state index out of range: ", index);
       return false;
     }
     return this->points[index].flags & BLANKING_BIT;
@@ -106,7 +110,7 @@ struct coord8_point_buf_t {
 
   void set_coords(uint8_t index, uint8_t x, uint8_t y) {
     if (index >= MAX_POINTS) {
-      DEBUG_ERROR("coord8_point_buf_t::set_coords: Index out of range");
+      DEBUG_ERROR_VAL("Buffer set coords index out of range: ", index);
       return;
     }
     this->points[index].x = x;
@@ -115,7 +119,11 @@ struct coord8_point_buf_t {
 
   void get_coords(uint8_t index, uint8_t *x, uint8_t *y) {
     if (index >= MAX_POINTS) {
-      DEBUG_ERROR("coord8_point_buf_t::get_coords: Index out of range");
+      DEBUG_ERROR_VAL("Buffer get coords index out of range: ", index);
+      return;
+    }
+    if (x == nullptr || y == nullptr) {
+      DEBUG_ERROR("Buffer get coords null pointer");
       return;
     }
     *x = this->points[index].x;
@@ -124,7 +132,7 @@ struct coord8_point_buf_t {
 
   void set_point(uint8_t index, point_coord8_t point) {
     if (index >= MAX_POINTS) {
-      DEBUG_ERROR("coord8_point_buf_t::set_point: Index out of range");
+      DEBUG_ERROR_VAL("Buffer set point index out of range: ", index);
       return;
     }
     this->points[index] = point;
@@ -132,7 +140,11 @@ struct coord8_point_buf_t {
 
   void get_point(uint8_t index, point_coord8_t *point) {
     if (index >= MAX_POINTS) {
-      DEBUG_ERROR("coord8_point_buf_t::get_point: Index out of range");
+      DEBUG_ERROR_VAL("Buffer get point index out of range: ", index);
+      return;
+    }
+    if (point == nullptr) {
+      DEBUG_ERROR("Buffer get point null pointer");
       return;
     }
     *point = this->points[index];
@@ -140,7 +152,7 @@ struct coord8_point_buf_t {
 
   void set_point_count(uint8_t count) {
     if (count > MAX_POINTS) {
-      DEBUG_ERROR("coord8_point_buf_t::set_point_count: Count out of range");
+      DEBUG_ERROR_VAL("Buffer point count out of range: ", count);
       return;
     }
     this->point_count = count;

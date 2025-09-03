@@ -1,5 +1,6 @@
 #pragma once
 #include "../config.h"
+#include "../debug.h"
 #include <Arduino.h>
 #include <HardwareSerial.h>
 
@@ -18,23 +19,30 @@ private:
 };
 
 void SerialIO::init() {
-  baud_rate = 9600;
+  baud_rate = DEFAULT_BAUD_RATE;
+  VALIDATE_RANGE_CLIP(baud_rate, MIN_BAUD_RATE, MAX_BAUD_RATE);
   Serial.begin(baud_rate);
-  DEBUG_INFO(F("Serial IO initialized"));
-  DEBUG_INFO(F("Baud rate: %d"), baud_rate);
+  DEBUG_INFO_VAL("Serial ready, baud: ", baud_rate);
   Serial.println(F("Galvonium ready."));
 }
 
 void SerialIO::init(uint32_t baud) {
-  Serial.begin(baud);
-  DEBUG_INFO(F("Serial IO initialized"));
-  DEBUG_INFO(F("Baud rate: %d"), baud);
+  VALIDATE_RANGE_CLIP(baud, MIN_BAUD_RATE, MAX_BAUD_RATE);
+  baud_rate = baud;
+  Serial.begin(baud_rate);
+  DEBUG_INFO("Serial IO initialized with custom baud rate");
+  DEBUG_INFO_VAL("Baud rate: ", baud_rate);
   Serial.println(F("Galvonium ready."));
 }
 
 bool SerialIO::available() { return Serial.available(); }
 
-char SerialIO::read() { return Serial.read(); }
+char SerialIO::read() { 
+  if (!available()) {
+    DEBUG_VERBOSE("Serial read called with no data available");
+  }
+  return Serial.read(); 
+}
 
 void SerialIO::write(char c) { Serial.write(c); }
 

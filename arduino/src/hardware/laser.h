@@ -1,5 +1,6 @@
 #pragma once
 #include "../config.h"
+#include "../debug.h"
 #include <Arduino.h>
 
 // Laser control class
@@ -11,8 +12,10 @@ public:
   }
 
   void init() {
+    DEBUG_INFO("Laser init");
     pinMode(LASER_PIN, OUTPUT);
     digitalWrite(LASER_PIN, LOW);
+    DEBUG_INFO_VAL("Laser ready on pin: ", LASER_PIN);
   }
 
   void set_laser(bool enable) {
