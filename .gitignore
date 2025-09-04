@@ -34,6 +34,7 @@ python/*.log
 *.code-workspace
 # Keep the main workspace file
 !galvonium.code-workspace
+.ccls-cache/
 
 # OS Files
 .DS_Store
