@@ -89,7 +89,7 @@
 
 #define ENABLE_DEBUG_PINS 1
 
-#define DEBUG_LEVEL 1 // 0=silent, 1=errors, 2=info, 3=verbose
+#define DEBUG_LEVEL 0 // 0=silent, 1=errors, 2=info, 3=verbose
 
 // Debug level constants
 #define DEBUG_LEVEL_OFF 0

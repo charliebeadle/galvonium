@@ -28,15 +28,13 @@ void Renderer::init() {
 
   // dummy data for the buffer
   point_coord8_t dummy_points[] = {
-      {0, 0, 0},
-      {255, 0, 0},
-      {255, 255, 0},
-      {0, 255, 0},
-  };
-  for (int i = 0; i < 4; i++) {
+      {0, 0, 0},     {200, 0, 0}, {200, 200, 0}, {0, 200, 0}, {0, 0, 0},
+      {200, 200, 0}, {200, 0, 0}, {0, 200, 0},   {0, 0, 0},   {0, 100, 0},
+      {200, 100, 0}, {100, 0, 0}, {100, 200, 0}};
+  for (int i = 0; i < 13; i++) {
     inactive_point_buf->set_point(i, dummy_points[i]);
   }
-  inactive_point_buf->set_point_count(4);
+  inactive_point_buf->set_point_count(13);
   DEBUG_VERBOSE(F("Renderer::init: Dummy data set"));
 }
 
@@ -59,6 +57,7 @@ bool Renderer::swap_buffers() {
 
 void Renderer::process() {
   DEBUG_VERBOSE(F("Renderer::process"));
+  this->current_transition.print();
   switch (this->renderer_state) {
   case R_STATE_FIRST_POINT:
     DEBUG_INFO(F("Renderer::process: R_STATE_FIRST_POINT"));
@@ -184,15 +183,16 @@ bool Renderer::get_next_point(point_q12_4_t *point, bool *laser_state) {
 
   // Check if the active point buffer is empty
   if (active_point_buf->get_point_count() == 0) {
-    DEBUG_VERBOSE(F("Renderer::get_next_point: Active point buffer is empty"));
+    DEBUG_INFO(F("Renderer::get_next_point: Active point buffer is empty"));
     buffer_status = EMPTY;
+
     return false;
   }
 
-  // Check if we're at the end of the active point buffer
-  // (this shouldn't happen - we check at the end of this function)
+  // Check if we're at the end of the active point buffer BEFORE getting the
+  // point
   if (point_buf_index == active_point_buf->get_point_count()) {
-    DEBUG_ERROR(F("Renderer::get_next_point: Unexpected end of buffer"));
+    DEBUG_VERBOSE(F("Renderer::get_next_point: End of buffer"));
     buffer_status = FINISHED;
     return false;
   }
@@ -212,11 +212,9 @@ bool Renderer::get_next_point(point_q12_4_t *point, bool *laser_state) {
 
   point_buf_index++;
 
-  // Check if we're at the end of the active point buffer
+  // Set buffer status based on whether we're now at the end
   if (point_buf_index == active_point_buf->get_point_count()) {
-    DEBUG_VERBOSE(F("Renderer::get_next_point: End of buffer"));
     buffer_status = FINISHED;
-    return false;
   } else {
     buffer_status = ACTIVE;
   }
@@ -290,8 +288,12 @@ bool Renderer::process_next_step() {
             F("Renderer::process_next_step: Interpolation is finished"));
 
         process_state = INTERP_FINISHED;
-        renderer_state = R_STATE_NEXT_POINT;
 
+        // if (buffer_status == FINISHED) {
+        //   renderer_state = R_STATE_BUFFER_FINISHED;
+        // } else {
+        renderer_state = R_STATE_NEXT_POINT;
+        // }
         return false;
       }
     }

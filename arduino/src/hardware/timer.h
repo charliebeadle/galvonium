@@ -128,7 +128,8 @@ ISR(TIMER1_COMPA_vect) {
       // Output the data using the hardware output callback
       g_timer_instance->getHardwareOutput()(&point, &laser_state);
     } else {
-      DEBUG_ISR_PIN_OFF();
     }
   }
+
+  DEBUG_ISR_PIN_OFF();
 }
