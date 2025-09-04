@@ -23,6 +23,14 @@ struct interpolation_t {
   uint8_t dec_factor;
 
   interp_state_t state;
+
+  inline void print() const {
+    DEBUG_INFO_VAL2("Interpolation: Step ", step.x, step.y);
+    DEBUG_INFO_VAL("Interpolation: Current step ", current_step);
+    DEBUG_INFO_VAL("Interpolation: Total steps ", total_steps);
+    DEBUG_INFO_VAL("Interpolation: Acc factor ", acc_factor);
+    DEBUG_INFO_VAL("Interpolation: Dec factor ", dec_factor);
+  }
 };
 
 extern interpolation_t interp;

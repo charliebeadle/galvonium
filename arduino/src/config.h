@@ -13,6 +13,10 @@
  */
 
 // ============================================================================
+// DEBUG CONFIGURATION
+// ============================================================================
+
+// ============================================================================
 // SYSTEM CONSTANTS
 // ============================================================================
 
@@ -99,9 +103,9 @@
 // ============================================================================
 
 // Step size limits
-#define MIN_STEP_SIZE 1     // Minimum interpolation step size
-#define MAX_STEP_SIZE 50    // Maximum interpolation step size
-#define DEFAULT_STEP_SIZE 4 // Default interpolation step size
+#define MIN_STEP_SIZE 1      // Minimum interpolation step size
+#define MAX_STEP_SIZE 50     // Maximum interpolation step size
+#define DEFAULT_STEP_SIZE 16 // Default interpolation step size
 
 // Acceleration/deceleration factors (0-7 for bit shifts)
 #define MIN_ACC_FACTOR 0     // Minimum acceleration factor
@@ -110,7 +114,7 @@
 
 #define MIN_DEC_FACTOR 0     // Minimum deceleration factor
 #define MAX_DEC_FACTOR 7     // Maximum deceleration factor
-#define DEFAULT_DEC_FACTOR 0 // Default deceleration factor
+#define DEFAULT_DEC_FACTOR 4 // Default deceleration factor
 
 // ============================================================================
 // SERIAL COMMUNICATION

@@ -1,4 +1,5 @@
 #pragma once
+#include "debug.h"
 #include <stdint.h>
 
 // Stored in the double buffer
@@ -115,6 +116,13 @@ struct transition_t {
   transition_t() : start_point(0, 0), end_point(0, 0), current_point(0, 0) {}
   transition_t(point_q12_4_t start, point_q12_4_t end)
       : start_point(start), end_point(end), current_point(start) {}
+
+  inline void print() const {
+    DEBUG_INFO_VAL2("Transition: Start point ", start_point.x, start_point.y);
+    DEBUG_INFO_VAL2("Transition: End point ", end_point.x, end_point.y);
+    DEBUG_INFO_VAL2("Transition: Current point ", current_point.x,
+                    current_point.y);
+  }
 };
 
 // Data about a buffer - not used to store critical buffer state or data

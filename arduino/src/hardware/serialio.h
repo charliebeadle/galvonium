@@ -1,5 +1,6 @@
 #pragma once
 #include "../config.h"
+#include "../debug.h"
 #include <Arduino.h>
 #include <HardwareSerial.h>
 

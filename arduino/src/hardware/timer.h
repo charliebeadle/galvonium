@@ -1,5 +1,6 @@
 #pragma once
 #include "../config.h"
+#include "../debug.h"
 #include "../types.h"
 #include <Arduino.h>
 
@@ -126,8 +127,8 @@ ISR(TIMER1_COMPA_vect) {
     if (g_timer_instance->getDataSource()(&point, &laser_state)) {
       // Output the data using the hardware output callback
       g_timer_instance->getHardwareOutput()(&point, &laser_state);
+    } else {
+      DEBUG_ISR_PIN_OFF();
     }
   }
-
-  DEBUG_ISR_PIN_OFF();
 }

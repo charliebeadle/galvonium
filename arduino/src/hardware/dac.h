@@ -14,8 +14,8 @@ public:
   }
 
   void output_point(point_q12_4_t *point) {
-    uint16_t packetX = DAC_FLAGS_A << 8 | point->x >> 4;
-    uint16_t packetY = DAC_FLAGS_B << 8 | point->y >> 4;
+    uint16_t packetX = DAC_FLAGS_A << 8 | (point->x & 0x0FFF);
+    uint16_t packetY = DAC_FLAGS_B << 8 | (point->y & 0x0FFF);
     output(packetX, packetY);
   }
 

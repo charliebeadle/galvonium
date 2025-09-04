@@ -22,16 +22,36 @@ struct step_ring_buf_16_t {
   }
 
   // Buffer is empty when head == tail
-  inline bool is_empty() const { return head == tail; }
+  inline bool is_empty() const {
+    noInterrupts();
+    bool result = head == tail;
+    interrupts();
+    return result;
+  }
 
   // Buffer is full when head + 1 == tail
   // There is always one empty slot, which keeps this thread safe
   inline bool is_full() const {
-    return ((head + 1) & STEP_RING_BUFFER_MASK) == tail;
+    noInterrupts();
+    bool result = ((head + 1) & STEP_RING_BUFFER_MASK) == tail;
+    interrupts();
+    return result;
   }
 
   // The number of elements in the buffer
-  inline uint8_t size() const { return (head - tail) & STEP_RING_BUFFER_MASK; }
+  inline uint8_t size() const {
+    noInterrupts();
+    uint8_t result = (head - tail) & STEP_RING_BUFFER_MASK;
+    interrupts();
+    return result;
+  }
+  inline uint8_t space() const {
+    noInterrupts();
+    uint8_t result =
+        STEP_RING_BUFFER_SIZE - ((head - tail) & STEP_RING_BUFFER_MASK);
+    interrupts();
+    return result;
+  }
 
   // Pop the next step from the buffer
   // Returns false if the buffer is empty
@@ -39,10 +59,22 @@ struct step_ring_buf_16_t {
     if (is_empty()) {
       return false;
     }
+
+    noInterrupts(); // Critical section start
     *point = point_buf[tail];
     *flag = (flag_buf & (1 << tail)) != 0;
-
     tail = (tail + 1) & STEP_RING_BUFFER_MASK; // modulo STEP_RING_BUFFER_SIZE
+    interrupts();                              // Critical section end
+
+    DEBUG_VERBOSE_VAL2("step_ring_buf_16_t::pop: Point ", point->x, point->y);
+    DEBUG_VERBOSE_VAL("step_ring_buf_16_t::pop: Flag ", *flag);
+    DEBUG_VERBOSE_VAL("step_ring_buf_16_t::pop: Head ", head);
+    DEBUG_VERBOSE_VAL("step_ring_buf_16_t::pop: Tail ", tail);
+    DEBUG_VERBOSE_VAL("step_ring_buf_16_t::pop: Size ", size());
+    DEBUG_VERBOSE_VAL("step_ring_buf_16_t::pop: Space ", space());
+    DEBUG_VERBOSE_VAL("step_ring_buf_16_t::pop: Is full ", is_full());
+    DEBUG_VERBOSE_VAL("step_ring_buf_16_t::pop: Is empty ", is_empty());
+
     return true;
   }
 
@@ -53,6 +85,7 @@ struct step_ring_buf_16_t {
       return false;
     }
 
+    noInterrupts(); // Critical section start
     point_buf[head] = point;
 
     // Clear and set
@@ -60,19 +93,33 @@ struct step_ring_buf_16_t {
     flag_buf |= (flag << head);
 
     head = (head + 1) & STEP_RING_BUFFER_MASK; // modulo STEP_RING_BUFFER_SIZE
+    interrupts();                              // Critical section end
+
+    DEBUG_VERBOSE_VAL2("step_ring_buf_16_t::push: Point ", point.x, point.y);
+    DEBUG_VERBOSE_VAL("step_ring_buf_16_t::push: Flag ", flag);
+    DEBUG_VERBOSE_VAL("step_ring_buf_16_t::push: Head ", head);
+    DEBUG_VERBOSE_VAL("step_ring_buf_16_t::push: Tail ", tail);
+    DEBUG_VERBOSE_VAL("step_ring_buf_16_t::push: Size ", size());
+    DEBUG_VERBOSE_VAL("step_ring_buf_16_t::push: Space ", space());
+    DEBUG_VERBOSE_VAL("step_ring_buf_16_t::push: Is full ", is_full());
+    DEBUG_VERBOSE_VAL("step_ring_buf_16_t::push: Is empty ", is_empty());
 
     return true;
   }
 
   // Just in case
   inline bool peek(point_q12_4_t *point, bool *flag) const {
+    noInterrupts(); // Critical section start
+
     if (is_empty()) {
+      interrupts(); // Critical section end
       return false;
     }
 
     *point = point_buf[tail];
     *flag = (flag_buf & (1 << tail)) != 0;
 
+    interrupts(); // Critical section end
     return true;
   }
 };

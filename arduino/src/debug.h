@@ -87,9 +87,9 @@
 #include "config.h"
 #include <Arduino.h>
 
-#define ENABLE_DEBUG_PINS 0
-#define ENABLE_INTERPOLATION 0
-#define DEBUG_LEVEL 3 // 0=silent, 1=errors, 2=info, 3=verbose
+#define ENABLE_DEBUG_PINS 1
+
+#define DEBUG_LEVEL 1 // 0=silent, 1=errors, 2=info, 3=verbose
 
 // Debug level constants
 #define DEBUG_LEVEL_OFF 0
@@ -133,45 +133,45 @@
 // config.h
 
 #if DEBUG_LEVEL >= DEBUG_LEVEL_ERROR
-#define DEBUG_ERROR_VAL(x, val)                                                \
-  Serial.print(F(x));                                                          \
+#define DEBUG_ERROR_VAL(str, val)                                              \
+  Serial.print(F(str));                                                        \
   Serial.println(val)
-#define DEBUG_ERROR_VAL2(x, val1, val2)                                        \
-  Serial.print(F(x));                                                          \
+#define DEBUG_ERROR_VAL2(str, val1, val2)                                      \
+  Serial.print(F(str));                                                        \
   Serial.print(val1);                                                          \
   Serial.print(F(" "));                                                        \
   Serial.println(val2)
 #else
-#define DEBUG_ERROR_VAL(x, val)
-#define DEBUG_ERROR_VAL2(x, val1, val2)
+#define DEBUG_ERROR_VAL(str, val)
+#define DEBUG_ERROR_VAL2(str, val1, val2)
 #endif
 
 #if DEBUG_LEVEL >= DEBUG_LEVEL_INFO
-#define DEBUG_INFO_VAL(x, val)                                                 \
-  Serial.print(F(x));                                                          \
+#define DEBUG_INFO_VAL(str, val)                                               \
+  Serial.print(F(str));                                                        \
   Serial.println(val)
-#define DEBUG_INFO_VAL2(x, val1, val2)                                         \
-  Serial.print(F(x));                                                          \
+#define DEBUG_INFO_VAL2(str, val1, val2)                                       \
+  Serial.print(F(str));                                                        \
   Serial.print(val1);                                                          \
   Serial.print(F(" "));                                                        \
   Serial.println(val2)
 #else
-#define DEBUG_INFO_VAL(x, val)
-#define DEBUG_INFO_VAL2(x, val1, val2)
+#define DEBUG_INFO_VAL(str, val)
+#define DEBUG_INFO_VAL2(str, val1, val2)
 #endif
 
 #if DEBUG_LEVEL >= DEBUG_LEVEL_VERBOSE
-#define DEBUG_VERBOSE_VAL(x, val)                                              \
-  Serial.print(F(x));                                                          \
+#define DEBUG_VERBOSE_VAL(str, val)                                            \
+  Serial.print(F(str));                                                        \
   Serial.println(val)
-#define DEBUG_VERBOSE_VAL2(x, val1, val2)                                      \
-  Serial.print(F(x));                                                          \
+#define DEBUG_VERBOSE_VAL2(str, val1, val2)                                    \
+  Serial.print(F(str));                                                        \
   Serial.print(val1);                                                          \
   Serial.print(F(" "));                                                        \
   Serial.println(val2)
 #else
-#define DEBUG_VERBOSE_VAL(x, val)
-#define DEBUG_VERBOSE_VAL2(x, val1, val2)
+#define DEBUG_VERBOSE_VAL(str, val)
+#define DEBUG_VERBOSE_VAL2(str, val1, val2)
 #endif
 
 // Input validation macros - optimized for Arduino
