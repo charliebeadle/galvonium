@@ -1,10 +1,9 @@
 #include "renderer.h"
-#include "../config.h"
-#include "../types.h"
-#include "interpolation.h"
+
 #include <Arduino.h>
 
 Renderer renderer;
+
 
 // Getter function for renderer access
 Renderer &getRenderer() {
@@ -246,10 +245,10 @@ bool Renderer::get_dwell() {
 
   if (transition.get_start_laser() == true &&
       transition.get_end_laser() == false) {
-    this->dwell = LASER_OFF_DWELL_TIME;
+    this->dwell = g_config.renderer.laser_off_dwell;
   } else if (transition.get_start_laser() == false &&
              transition.get_end_laser() == true) {
-    this->dwell = LASER_ON_DWELL_TIME;
+    this->dwell = g_config.renderer.laser_on_dwell;
   } else {
     this->dwell = 0;
     return false;

@@ -84,7 +84,6 @@
  * ============================================================================
  */
 
-#include "config.h"
 #include <Arduino.h>
 
 #define ENABLE_DEBUG_PINS 1

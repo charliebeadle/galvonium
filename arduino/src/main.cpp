@@ -1,8 +1,12 @@
+#include "comm/command.h"
+#include "config.h"
 #include "hardware/hardware.h"
 #include "renderer/renderer.h"
 #include <Arduino.h>
 #include <EEPROM.h>
 #include <SPI.h>
+
+config_t g_config = default_config;
 
 void setup() {
 
@@ -30,4 +34,5 @@ void loop() {
   DEBUG_INFO(F("Loop completed"));
 
   DEBUG_DAC_PIN_OFF();
+  serialCommands.readSerial();
 }

@@ -19,7 +19,7 @@ private:
 };
 
 void SerialIO::init() {
-  baud_rate = 9600;
+  baud_rate = g_config.serial.baud_rate;
   Serial.begin(baud_rate);
   DEBUG_INFO(F("Serial IO initialized"));
   DEBUG_INFO(F("Baud rate: %d"), baud_rate);

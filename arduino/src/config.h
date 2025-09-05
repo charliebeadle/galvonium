@@ -1,4 +1,5 @@
 #pragma once
+#include <Arduino.h>
 
 /*
  * ============================================================================
@@ -145,3 +146,74 @@
 
 // Legacy parameter aliases (for backward compatibility)
 #define MAX_STEP_LENGTH MAX_STEP_SIZE // Alias for step size
+
+struct config_t {
+  struct timer_config_t {
+    uint32_t frequency; // ISR frequency (Hz)
+    bool enabled;
+  } timer;
+  struct serial_config_t {
+    uint32_t baud_rate;
+  } serial;
+  struct dac_config_t {
+    uint8_t dac_flags_a;
+    uint8_t dac_flags_b;
+    uint32_t speed;
+    uint8_t bit_order;
+    uint8_t data_mode;
+  } dac;
+
+  struct laser_config_t {
+    uint8_t pin;
+  } laser;
+
+  struct {
+    uint8_t laser_on_dwell;
+    uint8_t laser_off_dwell;
+    uint8_t max_step_size; // 0 = no interpolation
+    uint8_t acc_factor;    // 0 = no acceleration
+    uint8_t dec_factor;    // 0 = no deceleration
+    bool flip_x;
+    bool flip_y;
+    bool swap_xy;
+  } renderer;
+};
+
+const config_t default_config = {
+    .timer =
+        {
+            .frequency = DEFAULT_PPS,
+            .enabled = true,
+        },
+    .serial =
+        {
+            .baud_rate = DEFAULT_BAUD_RATE,
+        },
+
+    .dac =
+        {
+            .dac_flags_a = DAC_FLAGS_A,
+            .dac_flags_b = DAC_FLAGS_B,
+            .speed = SPI_SPEED,
+            .bit_order = 1, // MSBFIRST,
+            .data_mode = 1, // SPI_MODE,
+        },
+    .laser =
+        {
+            .pin = LASER_PIN,
+        },
+    .renderer =
+        {
+            .laser_on_dwell = LASER_ON_DWELL_TIME,
+            .laser_off_dwell = LASER_OFF_DWELL_TIME,
+            .max_step_size = DEFAULT_STEP_SIZE,
+            .acc_factor = DEFAULT_ACC_FACTOR,
+            .dec_factor = DEFAULT_DEC_FACTOR,
+            .flip_x = false,
+            .flip_y = false,
+            .swap_xy = false,
+        },
+
+};
+
+extern config_t g_config;

@@ -1,5 +1,4 @@
 #include "interpolation.h"
-#include "../types.h"
 
 // TODO: add validation for all parameters
 

@@ -4,6 +4,7 @@
 
 // Laser control class
 // TODO: write directly to port registers instead of using digitalWrite
+
 class Laser {
 public:
   Laser() {
@@ -11,17 +12,28 @@ public:
   }
 
   void init() {
-    pinMode(LASER_PIN, OUTPUT);
-    digitalWrite(LASER_PIN, LOW);
+    laser_pin = g_config.laser.pin;
+    pinMode(laser_pin, OUTPUT);
+    digitalWrite(laser_pin, LOW);
+  }
+
+  void set_pin(uint8_t pin) {
+    pinMode(pin, INPUT);
+    laser_pin = pin;
+    pinMode(laser_pin, OUTPUT);
+    digitalWrite(laser_pin, LOW);
   }
 
   void set_laser(bool enable) {
     if (enable) {
-      digitalWrite(LASER_PIN, HIGH);
+      digitalWrite(laser_pin, HIGH);
     } else {
-      digitalWrite(LASER_PIN, LOW);
+      digitalWrite(laser_pin, LOW);
     }
   }
 
-  bool is_laser_on() { return digitalRead(LASER_PIN) == HIGH; }
+  bool is_laser_on() { return digitalRead(laser_pin) == HIGH; }
+
+private:
+  uint8_t laser_pin;
 };

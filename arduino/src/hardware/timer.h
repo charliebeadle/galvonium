@@ -1,8 +1,10 @@
 #pragma once
+
 #include "../config.h"
 #include "../debug.h"
 #include "../types.h"
 #include <Arduino.h>
+
 
 // Forward declaration for callback
 typedef void (*timer_callback_t)(void);
@@ -48,8 +50,8 @@ private:
 Timer *g_timer_instance = nullptr;
 
 Timer::Timer() {
-  frequency = DEFAULT_PPS;
-  enabled = false;
+  frequency = g_config.timer.frequency;
+  enabled = g_config.timer.enabled;
   callback = nullptr;
   data_source = nullptr;
   hardware_output = nullptr;
@@ -71,7 +73,7 @@ void Timer::init() {
 
   setFrequency(frequency);
 
-  enable();
+  enabled ? enable() : disable();
 
   sei();
 

@@ -37,9 +37,9 @@ extern interpolation_t interp;
 extern transition_t *transition;
 
 bool interp_init(transition_t *transition,
-                 uint8_t step_size = DEFAULT_STEP_SIZE,
-                 uint8_t acc_factor = DEFAULT_ACC_FACTOR,
-                 uint8_t dec_factor = DEFAULT_DEC_FACTOR);
+                 uint8_t step_size = g_config.renderer.max_step_size,
+                 uint8_t acc_factor = g_config.renderer.acc_factor,
+                 uint8_t dec_factor = g_config.renderer.dec_factor);
 
 bool interp_next_step();
 

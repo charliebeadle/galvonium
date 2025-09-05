@@ -8,6 +8,8 @@
 #include "timer.h"
 #include <Arduino.h>
 
+extern config_t g_config;
+
 // Forward declaration for data source callback
 typedef bool (*data_source_callback_t)(void *point, void *laser_state);
 
@@ -41,8 +43,25 @@ public:
 
   // Set data source for timer ISR
   void setDataSource(void *data_source_func);
-};
 
+  void update_timer_from_config() {
+    timer.setFrequency(g_config.timer.frequency);
+    g_config.timer.enabled ? timer.enable() : timer.disable();
+  }
+
+  void update_dac_from_config() { dac.init(); }
+
+  void update_laser_from_config() { laser.set_pin(g_config.laser.pin); }
+
+  void update_serial_from_config() { serial.init(); }
+
+  void update_all_from_config() {
+    update_timer_from_config();
+    update_dac_from_config();
+    update_laser_from_config();
+    update_serial_from_config();
+  };
+};
 // Global context instance
 HardwareContext context;
 
@@ -61,7 +80,7 @@ inline Laser &laser() { return context.laser; }
 
 // HardwareContext method implementations
 void HardwareContext::init() {
-  serial.init(9600);
+  serial.init();
   dac.init();
   timer.init();
   laser.init();
