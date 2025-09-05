@@ -6,29 +6,21 @@
 #include "interpolation.h"
 #include <Arduino.h>
 
-#define LASER_ON_DWELL_TIME 10
-#define LASER_OFF_DWELL_TIME 10
+enum render_state_t {
+  IDLE_EMPTY,
+  IDLE_READY,
 
-enum renderer_state_t {
-  R_STATE_FIRST_POINT,
-  R_STATE_NEXT_POINT,
-  R_STATE_NEW_TRANSITION,
-  R_STATE_INTERPOLATE,
-  R_STATE_BUFFER_FINISHED,
-  R_STATE_BUFFER_EMPTY,
+  IDLE_BUFFER_SWAP,
+  RENDER_GET_POINT,
+  RENDER_DWELL,
+  RENDER_INTERPOLATE,
+  RENDER_BUFFER_END,
+  RENDER_BUFFER_SWAP,
 
-  R_STATE_INTERP_ERROR
+  ERROR_INTERP_FAULT,
+  ERROR_BUFFER_FAULT,
+
 };
-
-enum process_state_t {
-  RING_BUF_FULL,
-  DWELL_ACTIVE,
-  INTERP_ACTIVE,
-  INTERP_ERROR,
-  INTERP_FINISHED
-};
-
-enum buffer_status_t { ACTIVE, EMPTY, FINISHED };
 
 class Renderer {
 
@@ -49,30 +41,18 @@ private:
   coord8_point_buf_t *inactive_point_buf;
   uint8_t point_buf_index;
   bool swap_requested;
-  uint8_t step_buf_wait;
-  renderer_state_t renderer_state;
-  process_state_t process_state;
-  buffer_status_t buffer_status;
-  uint8_t dwell;
-  point_q12_4_t last_point;
-  bool last_laser_state;
-  point_q12_4_t next_point;
-  bool next_laser_state;
+  render_state_t render_state;
 
-  transition_t current_transition;
+  render_stats_t stats;
+  uint8_t dwell;
+
+  transition_t transition;
 
   bool swap_buffers();
   void process_next_point();
 
-  bool get_next_point(point_q12_4_t *point, bool *laser_state);
-  bool frame_finished();
-  void handle_buffer_finished();
-  void handle_first_point();
-  void handle_next_point();
-  void handle_new_transition();
-  bool process_next_step();
-  void calc_laser_dwell();
-  bool is_empty();
+  bool get_next_transition(transition_t *transition);
+  bool get_dwell();
 };
 
 // Global renderer instance

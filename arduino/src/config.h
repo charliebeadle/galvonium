@@ -92,11 +92,11 @@
 #define DEBUG_PPS 100     // Debug PPS frequency (slow for testing)
 
 // Laser dwell times (microseconds)
-#define LASER_ON_DWELL_TIME 10  // Laser on dwell time
-#define LASER_OFF_DWELL_TIME 10 // Laser off dwell time
-#define MIN_DWELL_TIME 1        // Minimum dwell time
-#define MAX_DWELL_TIME 255      // Maximum dwell time
-#define DEFAULT_DWELL_TIME 10   // Default dwell time
+#define LASER_ON_DWELL_TIME 5  // Laser on dwell time
+#define LASER_OFF_DWELL_TIME 5 // Laser off dwell time
+#define MIN_DWELL_TIME 1       // Minimum dwell time
+#define MAX_DWELL_TIME 255     // Maximum dwell time
+#define DEFAULT_DWELL_TIME 5   // Default dwell time
 
 // ============================================================================
 // INTERPOLATION PARAMETERS

@@ -194,4 +194,6 @@ struct coord8_point_buf_t {
   }
 
   uint8_t get_point_count() const { return this->point_count; }
+
+  inline bool is_empty() const { return this->point_count == 0; }
 };

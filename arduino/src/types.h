@@ -2,6 +2,14 @@
 #include "debug.h"
 #include <stdint.h>
 
+#define BIT_MASK(bit) (1 << bit)
+#define BIT_SET(value, bit) (value | BIT_MASK(bit))
+#define BIT_CLEAR(value, bit) (value & ~BIT_MASK(bit))
+#define BIT_TOGGLE(value, bit) (value ^ BIT_MASK(bit))
+#define BIT_TEST(value, bit) (value & BIT_MASK(bit))
+#define BIT_WRITE(value, bit, state)                                           \
+  (state ? BIT_SET(value, bit) : BIT_CLEAR(value, bit))
+
 // Stored in the double buffer
 struct point_coord8_t {
   uint8_t x;
@@ -108,14 +116,75 @@ struct point_q12_4_t {
   }
 };
 
+#define LASER_START_BIT 0
+#define LASER_CURRENT_BIT 1
+#define LASER_END_BIT 2
+
+/*
+transition_t represents a transition between two points (the start, and the end)
+laser_state is a bitfield representing the laser state
+
+current_point is where we are at the moment
+it is initialised to the start point, and updated as we interpolate
+
+current_laser is initialised to the end laser state, since if it is on we want
+it to be on throughout the transition and vice versa
+
+*/
+
 struct transition_t {
   point_q12_4_t start_point;
-  point_q12_4_t end_point;
   point_q12_4_t current_point;
+  point_q12_4_t end_point;
 
-  transition_t() : start_point(0, 0), end_point(0, 0), current_point(0, 0) {}
-  transition_t(point_q12_4_t start, point_q12_4_t end)
-      : start_point(start), end_point(end), current_point(start) {}
+  uint8_t laser_states; // Bit 0: Laser start state, Bit 1: Laser current state,
+                        // Bit 2: Laser end state
+
+  transition_t()
+      : start_point(0, 0), current_point(0, 0), end_point(0, 0),
+        laser_states(0) {}
+  transition_t(point_q12_4_t start, point_q12_4_t end, bool laser_start,
+               bool laser_end)
+      : start_point(start), current_point(start), end_point(end),
+        laser_states(BIT_WRITE(0, LASER_START_BIT, laser_start) |
+                     BIT_WRITE(0, LASER_CURRENT_BIT, laser_end) |
+                     BIT_WRITE(0, LASER_END_BIT, laser_end)) {}
+
+  inline bool get_start_laser() const {
+    return BIT_TEST(laser_states, LASER_START_BIT);
+  }
+  inline bool get_current_laser() const {
+    return BIT_TEST(laser_states, LASER_CURRENT_BIT);
+  }
+  inline bool get_end_laser() const {
+    return BIT_TEST(laser_states, LASER_END_BIT);
+  }
+  inline void set_start_laser(bool start_laser) {
+    laser_states = BIT_WRITE(laser_states, LASER_START_BIT, start_laser);
+  }
+  inline void set_current_laser(bool current_laser) {
+    laser_states = BIT_WRITE(laser_states, LASER_CURRENT_BIT, current_laser);
+  }
+  inline void set_end_laser(bool end_laser) {
+    laser_states = BIT_WRITE(laser_states, LASER_END_BIT, end_laser);
+  }
+
+  inline void set_next_point(point_q12_4_t next_point) {
+    start_point = end_point;
+    current_point = start_point;
+    end_point = next_point;
+  }
+
+  inline void set_next_laser(bool next_laser) {
+    set_start_laser(get_end_laser());
+    set_current_laser(next_laser);
+    set_end_laser(next_laser);
+  }
+
+  inline void set_next(point_q12_4_t next_point, bool next_laser) {
+    set_next_point(next_point);
+    set_next_laser(next_laser);
+  }
 
   inline void print() const {
     DEBUG_INFO_VAL2("Transition: Start point ", start_point.x, start_point.y);
@@ -123,6 +192,12 @@ struct transition_t {
     DEBUG_INFO_VAL2("Transition: Current point ", current_point.x,
                     current_point.y);
   }
+};
+
+struct render_stats_t {
+  uint8_t point_buf_wait;
+  uint8_t point_buf_repeat;
+  uint8_t step_buf_wait;
 };
 
 // Data about a buffer - not used to store critical buffer state or data
